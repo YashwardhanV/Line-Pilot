@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-ink/10;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply m-0 min-w-[320px] bg-canvas font-sans text-ink antialiased;
+    background-image:
+      radial-gradient(circle at 4% 4%, rgba(101, 88, 245, 0.12), transparent 24rem),
+      radial-gradient(circle at 96% 20%, rgba(42, 210, 187, 0.11), transparent 23rem);
+    background-attachment: fixed;
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    @apply outline-none ring-2 ring-violet ring-offset-2 ring-offset-canvas;
+  }
+}
+
+@layer components {
+  .field {
+    @apply w-full rounded-xl border border-ink/15 bg-white px-4 py-3 text-ink placeholder:text-ink/35 focus:border-violet focus:outline-none focus:ring-2 focus:ring-violet/20;
+  }
+
+  .button-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-violet px-5 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#5548e8] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0;
+  }
+
+  .button-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-ink/15 bg-white px-5 py-3 font-semibold text-ink transition hover:-translate-y-0.5 hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0;
+  }
+}

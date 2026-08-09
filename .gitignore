@@ -1,0 +1,10 @@
+.env
+.idea/
+*.iml
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.tsbuildinfo
+benchmarks/*.local.json
+*.log
