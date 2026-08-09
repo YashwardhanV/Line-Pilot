@@ -1,0 +1,6 @@
+app:
+  demo-data: false
+  sse-timeout: 5000
+spring:
+  jpa:
+    show-sql: false

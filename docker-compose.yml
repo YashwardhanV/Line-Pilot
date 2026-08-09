@@ -1,0 +1,53 @@
+name: linepilot
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-linepilot}
+      POSTGRES_USER: ${POSTGRES_USER:-linepilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-linepilot_dev}
+    volumes:
+      - linepilot-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-linepilot} -d ${POSTGRES_DB:-linepilot}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-linepilot}
+      DB_USERNAME: ${POSTGRES_USER:-linepilot}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-linepilot_dev}
+      CORS_ALLOWED_ORIGIN: http://localhost:${APP_PORT:-3000}
+      APP_DEMO_DATA: ${APP_DEMO_DATA:-true}
+      SSE_TIMEOUT_MS: ${SSE_TIMEOUT_MS:-300000}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "${APP_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  linepilot-db:
