@@ -1,177 +1,94 @@
 # LinePilot
 
-LinePilot is a focused digital queue application for service desks. Customers join remotely, receive a daily token, track the line live, and cancel if plans change. Staff call the next token, start service, mark no-shows, complete work, and inspect paginated history.
+## Project Architecture
 
 **Project owner and maintainer:** Yashwardhan Verma  
 **GitHub:** [YashwardhanV](https://github.com/YashwardhanV)  
 **LinkedIn:** [yashwardhanv](https://www.linkedin.com/in/yashwardhanv)  
 **Email:** [yashwardhanverma108@gmail.com](mailto:yashwardhanverma108@gmail.com)
 
-The project is intentionally a **modular monolith**: React + TypeScript + Tailwind, one Spring Boot API, and one PostgreSQL database. It demonstrates SDE-1 backend depth without pretending to be a distributed platform.
-
-## Main features
-
-- Public queue discovery, token creation, opaque tracking link, and cancellation.
-- Explicit `WAITING → CALLED → SERVING → COMPLETED` lifecycle, plus `SKIPPED` and `CANCELLED`.
-- Transactional daily token numbering with a database uniqueness constraint.
-- Concurrent call-next safety using PostgreSQL `FOR UPDATE SKIP LOCKED`.
-- Database-backed Spring Security accounts with `STAFF` and `ADMIN` roles.
-- Live queue boards over Server-Sent Events (SSE).
-- Moving-average wait estimate from the last ten completed service durations.
-- Paginated queue history, validation, RFC 7807-style error responses, and OpenAPI UI.
-- PostgreSQL Testcontainers integration tests, Docker Compose, health check, and GitHub Actions CI.
-- Repeatable concurrent staff + multi-client SSE benchmark.
-
-## Architecture
+LinePilot is a digital queue-management system built as a modular monolith. Customers can join a service queue, receive a daily token, follow live progress, and cancel their token. Staff can call the next customer, start service, mark a no-show, complete service, and review paginated history.
 
 ```mermaid
 flowchart LR
-    Browser["React customer / staff UI"] -->|"REST + SSE"| API["Spring Boot modular monolith"]
+    Browser["React customer and staff UI"] -->|"REST and SSE"| API["Spring Boot API"]
     API --> Security["Spring Security"]
-    API --> Service["Queue command + query services"]
-    Service --> JPA["Spring Data JPA"]
+    API --> Services["Command and query services"]
+    Services --> JPA["Spring Data JPA"]
     JPA --> DB[("PostgreSQL")]
 ```
 
-The database is the correctness boundary. `call-next` selects a waiting token with a row-locking query, changes its state, records the claiming staff member, and commits as one transaction. A partial unique index also prevents one staff account from holding two active claims. SSE snapshots are published only after commit.
+- **Frontend:** React, TypeScript, Vite, and Tailwind CSS provide separate customer and staff workflows. Nginx serves the production build and proxies API traffic.
+- **Backend:** Java 21 and Spring Boot expose validated DTO-based REST endpoints. Controllers handle HTTP concerns, services own transactional use cases, repositories isolate persistence queries, and centralized exception handling returns structured problem responses.
+- **Persistence:** PostgreSQL is the system-of-record and correctness boundary. Flyway owns schema evolution, while database constraints and indexes enforce queue invariants.
+- **Concurrency:** A customer join transaction allocates a queue-and-day sequence number protected by a unique constraint. `call-next` uses `FOR UPDATE SKIP LOCKED` so concurrent staff requests claim different waiting tokens. A partial unique index prevents one staff account from holding multiple active claims.
+- **Lifecycle:** Tokens move through `WAITING → CALLED → SERVING → COMPLETED`, with `SKIPPED` and `CANCELLED` terminal paths guarded by entity methods and service transactions.
+- **Live updates:** Server-Sent Events publish queue snapshots after a successful transaction commit, preventing clients from observing rolled-back state.
+- **Security and verification:** Database-backed `STAFF` and `ADMIN` accounts use Spring Security. PostgreSQL Testcontainers tests exercise real locking, constraints, authentication, and API behavior.
 
-More detail: [Architecture](docs/ARCHITECTURE.md) · [ER diagram](docs/ER_DIAGRAM.md)
+## How to Run
 
-## Run in under five minutes
+1. Install Docker Desktop or Docker Engine with Docker Compose.
+2. From the repository root, optionally copy `.env.example` to `.env` to override the development defaults.
+3. Build and start PostgreSQL, the backend, and the frontend:
 
-Prerequisite: Docker Desktop or Docker Engine with Compose.
+   ```bash
+   docker compose up --build
+   ```
 
-```bash
-cp .env.example .env       # optional; defaults already work
-docker compose up --build
-```
+4. Open the application:
 
-Open:
+   - Customer UI: <http://localhost:3000>
+   - Staff UI: <http://localhost:3000/staff>
+   - Backend health: <http://localhost:8080/actuator/health>
+   - OpenAPI UI: <http://localhost:8080/swagger-ui.html>
 
-- Application: [http://localhost:3000](http://localhost:3000)
-- Staff dashboard: [http://localhost:3000/staff](http://localhost:3000/staff)
-- Health: [http://localhost:3000/actuator/health](http://localhost:3000/actuator/health)
-- OpenAPI UI: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+5. Sign in to the staff UI with `staff1` or `staff2`; both demo accounts use `demo123` when `APP_DEMO_DATA=true`.
+6. Stop the stack without deleting the PostgreSQL volume:
 
-Demo staff accounts are `staff1` and `staff2`; both use password `demo123`. These are local demo credentials created only when `APP_DEMO_DATA=true`.
+   ```bash
+   docker compose down
+   ```
 
-To stop:
+For local development, start PostgreSQL with `docker compose up -d db`, run `mvn spring-boot:run` from `backend`, then run `npm ci` and `npm run dev` from `frontend` in a second terminal.
 
-```bash
-docker compose down
-```
-
-Add `-v` only when you intentionally want to delete the local PostgreSQL volume.
-
-## Local development
-
-Start PostgreSQL, then run:
-
-```bash
-cd backend
-mvn spring-boot:run
-```
-
-In another terminal:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Configuration is environment-driven. See [.env.example](.env.example) and `backend/src/main/resources/application.yml`.
-
-## API examples
-
-List queues:
-
-```bash
-curl http://localhost:3000/api/queues
-```
-
-Join a queue (replace `1` if needed):
-
-```bash
-curl -i -X POST http://localhost:3000/api/queues/1/tokens \
-  -H "Content-Type: application/json" \
-  -d '{"customerName":"Asha"}'
-```
-
-Call next as staff:
-
-```bash
-curl -u staff1:demo123 -X POST \
-  http://localhost:3000/api/staff/queues/1/call-next
-```
-
-Queue events:
-
-```bash
-curl -N -H "Accept: text/event-stream" \
-  http://localhost:3000/api/queues/1/events
-```
-
-OpenAPI describes all request/response schemas and endpoints.
-
-## Tests
-
-Backend tests require a running Docker engine because integration tests create real PostgreSQL with Testcontainers:
+Run the verification suites with:
 
 ```bash
 cd backend
 mvn test
-```
 
-The suite covers business calculations, lifecycle rules, PostgreSQL constraints, REST validation, authentication/roles, cancellation, priority ordering, and simultaneous call-next requests.
-
-Frontend:
-
-```bash
-cd frontend
+cd ../frontend
 npm ci
 npm run lint
 npm test
 npm run build
-npm audit --audit-level=moderate
 ```
 
-## Benchmark
+Backend integration tests require a running Docker engine because they launch PostgreSQL through Testcontainers.
 
-With the Docker stack healthy:
+## Interview Prep
 
-```bash
-node benchmarks/linepilot-benchmark.mjs
-```
+**Q: Why is LinePilot a modular monolith instead of a microservice system?**
 
-Optional settings: `RUNS`, `ROUNDS`, `SSE_CLIENTS`, `BASE_URL`, `STAFF_ONE`, `STAFF_TWO`, and `STAFF_PASSWORD`.
+**A:** The customer, staff, queue, and token workflows share one consistency boundary and have no measured need for independent deployment. A modular monolith keeps package ownership clear while allowing queue state changes, staff claims, and event publication to participate in understandable transactions. Services should be split only when scaling or team boundaries justify the operational cost.
 
-The checked-in measurement used three runs, two concurrent staff per round, and five SSE clients per run. It observed **0 duplicate assignments across 120 call-next requests**. These are local test results, not a general scalability claim. Full methodology and latency distributions: [Benchmark results](docs/BENCHMARK_RESULTS.md).
+**Q: How does `call-next` remain correct when two staff members act at the same time?**
 
-## Important engineering decisions
+**A:** The repository selects the next eligible token with PostgreSQL `FOR UPDATE SKIP LOCKED`. Each request locks a different row, updates the token and claiming staff member inside the same transaction, and relies on database constraints as a final guard. This works across request threads and application instances, unlike an in-memory mutex.
 
-- **SSE over WebSocket:** updates are one-way; SSE has reconnection support and a smaller protocol surface.
-- **PostgreSQL lock over an in-memory mutex:** correctness must hold across request threads and is coupled to the database transaction.
-- **Flyway over Hibernate schema creation:** migrations make constraints and indexes reviewable.
-- **HTTP Basic for the local staff demo:** keeps authentication understandable and stateless. It must run behind HTTPS outside localhost; a secure cookie session is the likely next step.
-- **No broker/cache/orchestrator:** Kafka, Redis, and Kubernetes do not solve a requirement in this version.
+**Q: How are friendly daily token numbers generated without duplicates?**
 
-## Known limitations
+**A:** Allocation occurs inside the join transaction and is scoped by queue and service date. A database uniqueness constraint protects the invariant under races. If concurrent requests contend, the database—not a prior `MAX + 1` read—decides whether the allocation is valid.
 
-- SSE subscribers live in memory, so the design intentionally supports one backend instance. A multi-instance version would need a shared event transport.
-- Staff credentials use HTTP Basic. Production deployment requires HTTPS and should consider short-lived secure-cookie sessions.
-- Anyone holding the unguessable public token UUID can view/cancel that token; there is no customer account or recovery flow.
-- The admin queue-management API has no matching frontend page.
-- No browser end-to-end test is included; API integration and component tests cover the critical paths.
-- Wait estimates are simple moving averages and do not account for staff count, breaks, service type, or time of day.
+**Q: Why use Server-Sent Events instead of WebSockets or polling?**
 
-## Future improvements
+**A:** Queue updates are one-way from server to browser, so SSE provides streaming, browser reconnection, and a smaller protocol surface than WebSockets. Events are emitted only after commit so a client never receives state that later rolls back. A shared event transport would be needed before running multiple backend instances.
 
-1. Idempotency keys for customer join requests.
-2. Secure cookie-based staff sessions and rate limiting at the deployment edge.
-3. Admin UI for queue configuration and authorized priority changes.
-4. Browser end-to-end tests for customer and staff flows.
-5. Optional notifications (email/SMS) only after delivery retries and credential management are designed.
-6. A shared event channel only if a demonstrated need for multiple backend instances appears.
+**Q: How is the wait estimate calculated, and what is its limitation?**
 
-Before putting benchmarked claims on a resume, run the tests and benchmark on your own machine and be prepared to explain every claim using [INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md).
+**A:** The service uses a moving average of the latest completed service durations and combines it with the number of customers ahead. It adapts better than a fixed or all-time average, but it does not model staff count, service category, breaks, or time-of-day patterns.
+
+**Q: What tests give confidence in the design?**
+
+**A:** Unit tests cover calculations and state transitions, while Spring Boot integration tests run against real PostgreSQL through Testcontainers. The integration suite verifies constraints, authentication, REST validation, priority ordering, cancellation, and simultaneous `call-next` requests, which cannot be proven reliably with mocked repositories or an in-memory database.
