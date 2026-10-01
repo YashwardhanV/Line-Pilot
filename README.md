@@ -8,7 +8,7 @@ Built by **Yashwardhan Verma** · [GitHub](https://github.com/YashwardhanV) · [
 
 ## Features
 
-- Customers join a queue without an account and track their token through a private link.
+- Customers join a queue without an account and track their token from the same browser (a random ID kept in `localStorage`).
 - Token lifecycle: `WAITING → CALLED → SERVING → COMPLETED`, plus `SKIPPED` (no-show) and `CANCELLED`.
 - Two staff pressing **Call next** at the same moment always get different customers.
 - Daily token numbers per queue (`A-001`, `A-002`, …) that never repeat, even under concurrent joins.
