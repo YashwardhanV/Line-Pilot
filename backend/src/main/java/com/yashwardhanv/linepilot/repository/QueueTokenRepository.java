@@ -30,7 +30,7 @@ public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
               FROM queue_tokens
              WHERE service_queue_id = :queueId
                AND status = 'WAITING'
-             ORDER BY priority DESC, joined_at ASC, id ASC
+             ORDER BY joined_at ASC, id ASC
              FOR UPDATE SKIP LOCKED
              LIMIT 1
             """, nativeQuery = true)
@@ -44,7 +44,7 @@ public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
             String username, Collection<TokenStatus> statuses);
 
     @EntityGraph(attributePaths = {"claimedBy"})
-    List<QueueToken> findByServiceQueueIdAndStatusInOrderByPriorityDescJoinedAtAscIdAsc(
+    List<QueueToken> findByServiceQueueIdAndStatusInOrderByJoinedAtAscIdAsc(
             Long queueId, Collection<TokenStatus> statuses);
 
     @EntityGraph(attributePaths = {"claimedBy"})

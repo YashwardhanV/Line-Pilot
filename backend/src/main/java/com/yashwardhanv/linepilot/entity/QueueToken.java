@@ -50,9 +50,6 @@ public class QueueToken {
     @Column(nullable = false, length = 20)
     private TokenStatus status;
 
-    @Column(nullable = false)
-    private int priority;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "claimed_by_id")
     private UserAccount claimedBy;
@@ -80,7 +77,7 @@ public class QueueToken {
     }
 
     public QueueToken(ServiceQueue queue, int sequenceNumber, LocalDate serviceDate,
-                      String displayNumber, String customerName, int priority, Clock clock) {
+                      String displayNumber, String customerName, Clock clock) {
         this.publicId = UUID.randomUUID();
         this.serviceQueue = queue;
         this.sequenceNumber = sequenceNumber;
@@ -88,7 +85,6 @@ public class QueueToken {
         this.displayNumber = displayNumber;
         this.customerName = customerName;
         this.status = TokenStatus.WAITING;
-        this.priority = priority;
         this.joinedAt = clock.instant();
         this.updatedAt = joinedAt;
     }
@@ -155,7 +151,6 @@ public class QueueToken {
     public String getDisplayNumber() { return displayNumber; }
     public String getCustomerName() { return customerName; }
     public TokenStatus getStatus() { return status; }
-    public int getPriority() { return priority; }
     public UserAccount getClaimedBy() { return claimedBy; }
     public Instant getJoinedAt() { return joinedAt; }
     public Instant getCalledAt() { return calledAt; }

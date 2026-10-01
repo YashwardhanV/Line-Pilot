@@ -17,10 +17,10 @@ class QueueRepositoryConstraintIntegrationTest extends PostgresIntegrationTest {
         ServiceQueue queue = queueRepository.save(new ServiceQueue("UNIQUE", "Unique", "Desk", "U", 5));
         LocalDate today = LocalDate.now(Clock.systemUTC());
         tokenRepository.saveAndFlush(new QueueToken(
-                queue, 1, today, "U-001", "First", 0, Clock.systemUTC()));
+                queue, 1, today, "U-001", "First", Clock.systemUTC()));
 
         assertThatThrownBy(() -> tokenRepository.saveAndFlush(new QueueToken(
-                queue, 1, today, "U-001", "Second", 0, Clock.systemUTC())))
+                queue, 1, today, "U-001", "Second", Clock.systemUTC())))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

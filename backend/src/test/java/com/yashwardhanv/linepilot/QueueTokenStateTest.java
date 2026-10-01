@@ -46,6 +46,6 @@ class QueueTokenStateTest {
 
     private QueueToken token() {
         ServiceQueue queue = new ServiceQueue("TEST", "Test", "Desk", "T", 5);
-        return new QueueToken(queue, 1, LocalDate.of(2026, 8, 7), "T-001", "Customer", 0, clock);
+        return new QueueToken(queue, 1, LocalDate.of(2026, 8, 7), "T-001", "Customer", clock);
     }
 }

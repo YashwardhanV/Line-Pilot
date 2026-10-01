@@ -56,7 +56,7 @@ public class QueueQueryService {
     public QueueSnapshotResponse snapshot(Long queueId) {
         ServiceQueue queue = findQueue(queueId);
         List<QueueToken> tokens = tokenRepository
-                .findByServiceQueueIdAndStatusInOrderByPriorityDescJoinedAtAscIdAsc(queueId, ACTIVE_STATUSES);
+                .findByServiceQueueIdAndStatusInOrderByJoinedAtAscIdAsc(queueId, ACTIVE_STATUSES);
         long waiting = tokens.stream().filter(token -> token.getStatus() == TokenStatus.WAITING).count();
         return new QueueSnapshotResponse(
                 queue.getId(),
@@ -131,7 +131,7 @@ public class QueueQueryService {
         long claimed = tokenRepository.countByServiceQueueIdAndStatusIn(
                 token.getServiceQueue().getId(), CLAIMED_STATUSES);
         List<QueueToken> waiting = tokenRepository
-                .findByServiceQueueIdAndStatusInOrderByPriorityDescJoinedAtAscIdAsc(
+                .findByServiceQueueIdAndStatusInOrderByJoinedAtAscIdAsc(
                         token.getServiceQueue().getId(), List.of(TokenStatus.WAITING));
         int index = 0;
         for (QueueToken item : waiting) {

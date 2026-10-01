@@ -36,7 +36,6 @@ CREATE TABLE queue_tokens (
     display_number VARCHAR(20) NOT NULL,
     customer_name VARCHAR(100) NOT NULL,
     status VARCHAR(20) NOT NULL,
-    priority INTEGER NOT NULL DEFAULT 0,
     claimed_by_id BIGINT REFERENCES user_accounts(id),
     joined_at TIMESTAMPTZ NOT NULL,
     called_at TIMESTAMPTZ,
@@ -46,12 +45,11 @@ CREATE TABLE queue_tokens (
     version BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_queue_tokens_public_id UNIQUE (public_id),
     CONSTRAINT uk_queue_tokens_daily_sequence UNIQUE (service_queue_id, service_date, sequence_number),
-    CONSTRAINT ck_queue_tokens_status CHECK (status IN ('WAITING', 'CALLED', 'SERVING', 'COMPLETED', 'SKIPPED', 'CANCELLED')),
-    CONSTRAINT ck_queue_tokens_priority CHECK (priority BETWEEN 0 AND 10)
+    CONSTRAINT ck_queue_tokens_status CHECK (status IN ('WAITING', 'CALLED', 'SERVING', 'COMPLETED', 'SKIPPED', 'CANCELLED'))
 );
 
 CREATE INDEX idx_queue_tokens_call_next
-    ON queue_tokens (service_queue_id, priority DESC, joined_at, id)
+    ON queue_tokens (service_queue_id, joined_at, id)
     WHERE status = 'WAITING';
 
 CREATE INDEX idx_queue_tokens_history

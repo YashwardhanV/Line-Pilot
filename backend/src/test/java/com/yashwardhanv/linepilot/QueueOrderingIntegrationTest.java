@@ -17,15 +17,16 @@ class QueueOrderingIntegrationTest extends PostgresIntegrationTest {
     QueueCommandService commandService;
 
     @Test
-    void higherPriorityIsCalledBeforeEarlierStandardToken() {
+    void tokensAreCalledInTheOrderCustomersJoined() {
         ServiceQueue queue = queueRepository.save(new ServiceQueue("ORDER", "Ordering", "Desk", "Q", 5));
         userRepository.save(new UserAccount("staff", "hash", "Staff", UserRole.STAFF));
-        commandService.joinQueue(queue.getId(), "Standard", 0);
-        TokenResponse priority = commandService.joinQueue(queue.getId(), "Priority", 2);
+        TokenResponse first = commandService.joinQueue(queue.getId(), "First customer");
+        commandService.joinQueue(queue.getId(), "Second customer");
 
         TokenResponse called = commandService.callNext(queue.getId(), "staff");
 
-        assertThat(called.id()).isEqualTo(priority.id());
+        assertThat(called.id()).isEqualTo(first.id());
+        assertThat(called.displayNumber()).isEqualTo("Q-001");
     }
 
     @Test

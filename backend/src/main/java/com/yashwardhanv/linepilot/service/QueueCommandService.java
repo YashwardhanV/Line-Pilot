@@ -52,14 +52,6 @@ public class QueueCommandService {
 
     @Transactional
     public TokenResponse joinQueue(Long queueId, String customerName) {
-        return joinQueue(queueId, customerName, 0);
-    }
-
-    @Transactional
-    public TokenResponse joinQueue(Long queueId, String customerName, int priority) {
-        if (priority < 0 || priority > 10) {
-            throw new IllegalArgumentException("Priority must be between 0 and 10");
-        }
         ServiceQueue queue = queueRepository.findByIdForUpdate(queueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Queue " + queueId + " not found"));
         if (!queue.isOpen()) {
@@ -71,7 +63,7 @@ public class QueueCommandService {
         String displayNumber = queue.getTokenPrefix().toUpperCase(Locale.ROOT)
                 + "-" + String.format(Locale.ROOT, "%03d", sequence);
         QueueToken token = new QueueToken(
-                queue, sequence, today, displayNumber, customerName.strip(), priority, clock);
+                queue, sequence, today, displayNumber, customerName.strip(), clock);
         tokenRepository.saveAndFlush(token);
         changed(queueId);
         return queryService.toTokenResponse(token);
