@@ -6,7 +6,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -42,10 +41,6 @@ public class ServiceQueue {
 
     @Column(name = "last_sequence", nullable = false)
     private int lastSequence;
-
-    @Version
-    @Column(nullable = false)
-    private long version;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();

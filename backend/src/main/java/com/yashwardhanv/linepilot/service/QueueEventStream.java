@@ -56,7 +56,6 @@ public class QueueEventStream {
 
     private void send(SseEmitter emitter, QueueSnapshotResponse snapshot) throws IOException {
         emitter.send(SseEmitter.event()
-                .id(snapshot.generatedAt().toString())
                 .name("queue.updated")
                 .data(snapshot));
     }

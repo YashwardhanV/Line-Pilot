@@ -67,7 +67,6 @@ public class PublicQueueController {
         SseEmitter emitter = eventStream.subscribe(queueId, queueService.snapshot(queueId));
         return ResponseEntity.status(HttpStatus.OK)
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-transform")
-                .header("X-Accel-Buffering", "no")
                 .body(emitter);
     }
 

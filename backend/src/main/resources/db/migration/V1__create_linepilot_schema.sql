@@ -18,7 +18,6 @@ CREATE TABLE service_queues (
     default_service_minutes INTEGER NOT NULL,
     sequence_date DATE,
     last_sequence INTEGER NOT NULL DEFAULT 0,
-    version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_service_queues_code UNIQUE (code),
     CONSTRAINT ck_service_queues_default_minutes CHECK (default_service_minutes BETWEEN 1 AND 240),
