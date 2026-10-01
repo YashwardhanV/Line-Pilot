@@ -16,15 +16,7 @@
     <version>0.1.0</version>
     <name>LinePilot Backend</name>
     <description>Transactional queue management API</description>
-    <url>https://github.com/YashwardhanV</url>
 
-    <developers>
-        <developer>
-            <name>Yashwardhan Verma</name>
-            <email>yashwardhanverma108@gmail.com</email>
-            <url>https://www.linkedin.com/in/yashwardhanv</url>
-        </developer>
-    </developers>
 
     <properties>
         <java.version>21</java.version>

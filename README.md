@@ -2,10 +2,7 @@
 
 LinePilot is a focused digital queue application for service desks. Customers join remotely, receive a daily token, track the line live, and cancel if plans change. Staff call the next token, start service, mark no-shows, complete work, and inspect paginated history.
 
-**Project owner and maintainer:** Yashwardhan Verma  
-**GitHub:** [YashwardhanV](https://github.com/YashwardhanV)  
-**LinkedIn:** [yashwardhanv](https://www.linkedin.com/in/yashwardhanv)  
-**Email:** [yashwardhanverma108@gmail.com](mailto:yashwardhanverma108@gmail.com)
+Built by **Yashwardhan Verma** · [GitHub](https://github.com/YashwardhanV) · [LinkedIn](https://www.linkedin.com/in/yashwardhanv)
 
 The project is intentionally a **modular monolith**: React + TypeScript + Tailwind, one Spring Boot API, and one PostgreSQL database. It demonstrates SDE-1 backend depth without pretending to be a distributed platform.
 
@@ -20,7 +17,6 @@ The project is intentionally a **modular monolith**: React + TypeScript + Tailwi
 - Moving-average wait estimate from the last ten completed service durations.
 - Paginated queue history, validation, RFC 7807-style error responses, and OpenAPI UI.
 - PostgreSQL Testcontainers integration tests, Docker Compose, health check, and GitHub Actions CI.
-- Repeatable concurrent staff + multi-client SSE benchmark.
 
 ## Architecture
 
@@ -136,18 +132,6 @@ npm run build
 npm audit --audit-level=moderate
 ```
 
-## Benchmark
-
-With the Docker stack healthy:
-
-```bash
-node benchmarks/linepilot-benchmark.mjs
-```
-
-Optional settings: `RUNS`, `ROUNDS`, `SSE_CLIENTS`, `BASE_URL`, `STAFF_ONE`, `STAFF_TWO`, and `STAFF_PASSWORD`.
-
-The checked-in measurement used three runs, two concurrent staff per round, and five SSE clients per run. It observed **0 duplicate assignments across 120 call-next requests**. These are local test results, not a general scalability claim. Full methodology and latency distributions: [Benchmark results](docs/BENCHMARK_RESULTS.md).
-
 ## Important engineering decisions
 
 - **SSE over WebSocket:** updates are one-way; SSE has reconnection support and a smaller protocol surface.
@@ -174,4 +158,3 @@ The checked-in measurement used three runs, two concurrent staff per round, and 
 5. Optional notifications (email/SMS) only after delivery retries and credential management are designed.
 6. A shared event channel only if a demonstrated need for multiple backend instances appears.
 
-Before putting benchmarked claims on a resume, run the tests and benchmark on your own machine and be prepared to explain every claim using [INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md).
