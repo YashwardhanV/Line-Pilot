@@ -69,13 +69,6 @@ public class ServiceQueue {
         return ++lastSequence;
     }
 
-    public void update(String name, String location, boolean open, int defaultServiceMinutes) {
-        this.name = name;
-        this.location = location;
-        this.open = open;
-        this.defaultServiceMinutes = defaultServiceMinutes;
-    }
-
     public Long getId() { return id; }
     public String getCode() { return code; }
     public String getName() { return name; }

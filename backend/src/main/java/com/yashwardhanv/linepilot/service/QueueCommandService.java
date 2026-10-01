@@ -1,7 +1,5 @@
 package com.yashwardhanv.linepilot.service;
 
-import com.yashwardhanv.linepilot.dto.QueueRequest;
-import com.yashwardhanv.linepilot.dto.QueueSummaryResponse;
 import com.yashwardhanv.linepilot.dto.TokenResponse;
 import com.yashwardhanv.linepilot.entity.QueueToken;
 import com.yashwardhanv.linepilot.entity.ServiceQueue;
@@ -110,37 +108,6 @@ public class QueueCommandService {
     @Transactional
     public TokenResponse skip(Long tokenId, String username) {
         return transition(tokenId, username, Transition.SKIP);
-    }
-
-    @Transactional
-    public QueueSummaryResponse createQueue(QueueRequest request) {
-        if (queueRepository.existsByCode(request.code())) {
-            throw new ConflictException("Queue code already exists");
-        }
-        ServiceQueue queue = new ServiceQueue(
-                request.code(), request.name(), request.location(), request.tokenPrefix(),
-                request.defaultServiceMinutes());
-        queue.update(request.name(), request.location(), request.open(), request.defaultServiceMinutes());
-        queueRepository.save(queue);
-        return queryService.listQueues().stream()
-                .filter(item -> item.code().equals(request.code()))
-                .findFirst()
-                .orElseThrow();
-    }
-
-    @Transactional
-    public QueueSummaryResponse updateQueue(Long queueId, QueueRequest request) {
-        ServiceQueue queue = queueRepository.findByIdForUpdate(queueId)
-                .orElseThrow(() -> new ResourceNotFoundException("Queue " + queueId + " not found"));
-        if (!queue.getCode().equals(request.code()) || !queue.getTokenPrefix().equals(request.tokenPrefix())) {
-            throw new ConflictException("Queue code and token prefix cannot be changed after creation");
-        }
-        queue.update(request.name(), request.location(), request.open(), request.defaultServiceMinutes());
-        changed(queueId);
-        return queryService.listQueues().stream()
-                .filter(item -> item.id().equals(queueId))
-                .findFirst()
-                .orElseThrow();
     }
 
     private TokenResponse transition(Long tokenId, String username, Transition transition) {

@@ -2,8 +2,6 @@ package com.yashwardhanv.linepilot.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -28,10 +26,6 @@ public class UserAccount {
     @Column(name = "display_name", nullable = false, length = 100)
     private String displayName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private UserRole role;
-
     @Column(nullable = false)
     private boolean enabled = true;
 
@@ -41,18 +35,16 @@ public class UserAccount {
     protected UserAccount() {
     }
 
-    public UserAccount(String username, String passwordHash, String displayName, UserRole role) {
+    public UserAccount(String username, String passwordHash, String displayName) {
         this.username = username;
         this.passwordHash = passwordHash;
         this.displayName = displayName;
-        this.role = role;
     }
 
     public Long getId() { return id; }
     public String getUsername() { return username; }
     public String getPasswordHash() { return passwordHash; }
     public String getDisplayName() { return displayName; }
-    public UserRole getRole() { return role; }
     public boolean isEnabled() { return enabled; }
     public Instant getCreatedAt() { return createdAt; }
 }

@@ -3,11 +3,9 @@ CREATE TABLE user_accounts (
     username VARCHAR(60) NOT NULL,
     password_hash VARCHAR(100) NOT NULL,
     display_name VARCHAR(100) NOT NULL,
-    role VARCHAR(20) NOT NULL,
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uk_user_accounts_username UNIQUE (username),
-    CONSTRAINT ck_user_accounts_role CHECK (role IN ('STAFF', 'ADMIN'))
+    CONSTRAINT uk_user_accounts_username UNIQUE (username)
 );
 
 CREATE TABLE service_queues (

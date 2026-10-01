@@ -54,7 +54,6 @@ export interface TokenResponse {
 export interface AuthUser {
   username: string;
   displayName: string;
-  role: "STAFF" | "ADMIN";
 }
 
 export interface HistoryItem {

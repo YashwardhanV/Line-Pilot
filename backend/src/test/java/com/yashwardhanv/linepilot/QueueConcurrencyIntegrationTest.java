@@ -4,7 +4,6 @@ import com.yashwardhanv.linepilot.dto.TokenResponse;
 import com.yashwardhanv.linepilot.entity.ServiceQueue;
 import com.yashwardhanv.linepilot.entity.TokenStatus;
 import com.yashwardhanv.linepilot.entity.UserAccount;
-import com.yashwardhanv.linepilot.entity.UserRole;
 import com.yashwardhanv.linepilot.exception.ConflictException;
 import com.yashwardhanv.linepilot.service.QueueCommandService;
 import org.junit.jupiter.api.Test;
@@ -29,8 +28,8 @@ class QueueConcurrencyIntegrationTest extends PostgresIntegrationTest {
     @Test
     void concurrentCallNextRequestsNeverClaimTheSameSingleToken() throws Exception {
         ServiceQueue queue = queueRepository.save(new ServiceQueue("ONE", "Single token", "Desk", "S", 5));
-        userRepository.save(new UserAccount("staff1", "hash", "Staff One", UserRole.STAFF));
-        userRepository.save(new UserAccount("staff2", "hash", "Staff Two", UserRole.STAFF));
+        userRepository.save(new UserAccount("staff1", "hash", "Staff One"));
+        userRepository.save(new UserAccount("staff2", "hash", "Staff Two"));
         commandService.joinQueue(queue.getId(), "Only Customer");
 
         List<CallResult> results = callConcurrently(queue.getId(), List.of("staff1", "staff2"));
@@ -52,8 +51,8 @@ class QueueConcurrencyIntegrationTest extends PostgresIntegrationTest {
     @Test
     void concurrentStaffClaimDistinctTokensWhenTwoAreWaiting() throws Exception {
         ServiceQueue queue = queueRepository.save(new ServiceQueue("TWO", "Two tokens", "Desk", "T", 5));
-        userRepository.save(new UserAccount("staff1", "hash", "Staff One", UserRole.STAFF));
-        userRepository.save(new UserAccount("staff2", "hash", "Staff Two", UserRole.STAFF));
+        userRepository.save(new UserAccount("staff1", "hash", "Staff One"));
+        userRepository.save(new UserAccount("staff2", "hash", "Staff Two"));
         commandService.joinQueue(queue.getId(), "First Customer");
         commandService.joinQueue(queue.getId(), "Second Customer");
 

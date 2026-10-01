@@ -2,7 +2,6 @@ package com.yashwardhanv.linepilot.config;
 
 import com.yashwardhanv.linepilot.entity.ServiceQueue;
 import com.yashwardhanv.linepilot.entity.UserAccount;
-import com.yashwardhanv.linepilot.entity.UserRole;
 import com.yashwardhanv.linepilot.repository.QueueTokenRepository;
 import com.yashwardhanv.linepilot.repository.ServiceQueueRepository;
 import com.yashwardhanv.linepilot.repository.UserAccountRepository;
@@ -37,14 +36,17 @@ public class DemoDataInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        createUser("staff1", "Anika Rao", UserRole.STAFF);
-        createUser("staff2", "Kabir Shah", UserRole.STAFF);
-        createUser("admin", "Demo Admin", UserRole.ADMIN);
+        createUser("staff1", "Anika Rao");
+        createUser("staff2", "Kabir Shah");
 
         ServiceQueue queue = queueRepository.findByCode("GENERAL")
                 .orElseGet(() -> queueRepository.save(new ServiceQueue(
                         "GENERAL", "Citizen Service Desk", "Ground floor · Counter hall",
                         "A", 6)));
+        queueRepository.findByCode("DOCS")
+                .orElseGet(() -> queueRepository.save(new ServiceQueue(
+                        "DOCS", "Document Verification", "First floor · Room 4",
+                        "D", 4)));
 
         if (tokenRepository.countByServiceQueueIdAndServiceDate(
                 queue.getId(), java.time.LocalDate.now(java.time.ZoneOffset.UTC)) == 0) {
@@ -54,10 +56,10 @@ public class DemoDataInitializer implements ApplicationRunner {
         }
     }
 
-    private void createUser(String username, String displayName, UserRole role) {
+    private void createUser(String username, String displayName) {
         if (!userRepository.existsByUsername(username)) {
             userRepository.save(new UserAccount(
-                    username, passwordEncoder.encode("demo123"), displayName, role));
+                    username, passwordEncoder.encode("demo123"), displayName));
         }
     }
 }

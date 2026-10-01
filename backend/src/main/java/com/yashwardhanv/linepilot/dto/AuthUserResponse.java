@@ -1,4 +1,4 @@
 package com.yashwardhanv.linepilot.dto;
 
-public record AuthUserResponse(String username, String displayName, String role) {
+public record AuthUserResponse(String username, String displayName) {
 }

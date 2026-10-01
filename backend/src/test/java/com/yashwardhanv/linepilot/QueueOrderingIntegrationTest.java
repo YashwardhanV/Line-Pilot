@@ -4,7 +4,6 @@ import com.yashwardhanv.linepilot.dto.TokenResponse;
 import com.yashwardhanv.linepilot.entity.ServiceQueue;
 import com.yashwardhanv.linepilot.entity.TokenStatus;
 import com.yashwardhanv.linepilot.entity.UserAccount;
-import com.yashwardhanv.linepilot.entity.UserRole;
 import com.yashwardhanv.linepilot.service.QueueCommandService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +18,7 @@ class QueueOrderingIntegrationTest extends PostgresIntegrationTest {
     @Test
     void tokensAreCalledInTheOrderCustomersJoined() {
         ServiceQueue queue = queueRepository.save(new ServiceQueue("ORDER", "Ordering", "Desk", "Q", 5));
-        userRepository.save(new UserAccount("staff", "hash", "Staff", UserRole.STAFF));
+        userRepository.save(new UserAccount("staff", "hash", "Staff"));
         TokenResponse first = commandService.joinQueue(queue.getId(), "First customer");
         commandService.joinQueue(queue.getId(), "Second customer");
 
@@ -32,7 +31,7 @@ class QueueOrderingIntegrationTest extends PostgresIntegrationTest {
     @Test
     void cancelledTokenCannotBeCalled() {
         ServiceQueue queue = queueRepository.save(new ServiceQueue("CANCEL", "Cancellation", "Desk", "C", 5));
-        userRepository.save(new UserAccount("staff", "hash", "Staff", UserRole.STAFF));
+        userRepository.save(new UserAccount("staff", "hash", "Staff"));
         TokenResponse first = commandService.joinQueue(queue.getId(), "Cancelling customer");
         TokenResponse second = commandService.joinQueue(queue.getId(), "Waiting customer");
         commandService.cancel(first.publicId());

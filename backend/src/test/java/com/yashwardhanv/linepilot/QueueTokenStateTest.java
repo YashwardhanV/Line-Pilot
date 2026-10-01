@@ -4,7 +4,6 @@ import com.yashwardhanv.linepilot.entity.QueueToken;
 import com.yashwardhanv.linepilot.entity.ServiceQueue;
 import com.yashwardhanv.linepilot.entity.TokenStatus;
 import com.yashwardhanv.linepilot.entity.UserAccount;
-import com.yashwardhanv.linepilot.entity.UserRole;
 import com.yashwardhanv.linepilot.exception.ConflictException;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +21,7 @@ class QueueTokenStateTest {
 
     @Test
     void followsExplicitHappyPathLifecycle() {
-        UserAccount staff = new UserAccount("staff", "hash", "Staff", UserRole.STAFF);
+        UserAccount staff = new UserAccount("staff", "hash", "Staff");
         QueueToken token = token();
 
         token.call(staff, clock);

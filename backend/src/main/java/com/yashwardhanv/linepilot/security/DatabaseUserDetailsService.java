@@ -23,7 +23,7 @@ public class DatabaseUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown user"));
         return User.withUsername(account.getUsername())
                 .password(account.getPasswordHash())
-                .roles(account.getRole().name())
+                .roles("STAFF") // every account in this app is a staff member
                 .disabled(!account.isEnabled())
                 .build();
     }

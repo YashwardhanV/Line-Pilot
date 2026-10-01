@@ -2,7 +2,6 @@ package com.yashwardhanv.linepilot;
 
 import com.yashwardhanv.linepilot.entity.ServiceQueue;
 import com.yashwardhanv.linepilot.entity.UserAccount;
-import com.yashwardhanv.linepilot.entity.UserRole;
 import com.yashwardhanv.linepilot.service.QueueCommandService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,9 +34,7 @@ class QueueApiIntegrationTest extends PostgresIntegrationTest {
     @BeforeEach
     void setUpApiData() {
         userRepository.save(new UserAccount(
-                "staff", passwordEncoder.encode("password"), "Staff", UserRole.STAFF));
-        userRepository.save(new UserAccount(
-                "admin", passwordEncoder.encode("password"), "Admin", UserRole.ADMIN));
+                "staff", passwordEncoder.encode("password"), "Staff"));
         queue = queueRepository.save(new ServiceQueue("API", "API Queue", "Desk", "A", 5));
     }
 
@@ -80,21 +77,16 @@ class QueueApiIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    void staffCannotUseAdminQueueManagementEndpoint() throws Exception {
-        mockMvc.perform(post("/api/admin/queues")
-                        .with(httpBasic("staff", "password"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "code":"NEW_QUEUE",
-                                  "name":"New queue",
-                                  "location":"Desk 2",
-                                  "tokenPrefix":"N",
-                                  "open":true,
-                                  "defaultServiceMinutes":5
-                                }
-                                """))
-                .andExpect(status().isForbidden());
+    void cancellingTwiceReturnsConflict() throws Exception {
+        String publicId = commandService.joinQueue(queue.getId(), "Customer").publicId().toString();
+
+        mockMvc.perform(post("/api/tokens/{publicId}/cancel", publicId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        mockMvc.perform(post("/api/tokens/{publicId}/cancel", publicId))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("State conflict"));
     }
 
     @Test

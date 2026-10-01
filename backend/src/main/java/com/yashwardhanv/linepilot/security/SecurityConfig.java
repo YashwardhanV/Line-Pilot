@@ -29,8 +29,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/queues/**", "/api/tokens/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/queues/*/tokens", "/api/tokens/*/cancel").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/staff/**", "/api/auth/me").hasAnyRole("STAFF", "ADMIN")
+                        .requestMatchers("/api/staff/**", "/api/auth/me").hasRole("STAFF")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
                 .build();
@@ -46,7 +45,7 @@ public class SecurityConfig {
             @Value("${app.cors-allowed-origin}") String allowedOrigin) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(allowedOrigin));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Last-Event-ID"));
         configuration.setExposedHeaders(List.of("Location"));
         configuration.setMaxAge(3600L);

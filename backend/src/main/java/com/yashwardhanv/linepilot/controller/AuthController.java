@@ -26,6 +26,6 @@ public class AuthController {
     public AuthUserResponse me(Principal principal) {
         UserAccount user = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found"));
-        return new AuthUserResponse(user.getUsername(), user.getDisplayName(), user.getRole().name());
+        return new AuthUserResponse(user.getUsername(), user.getDisplayName());
     }
 }

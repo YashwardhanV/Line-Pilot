@@ -14,8 +14,6 @@ public interface ServiceQueueRepository extends JpaRepository<ServiceQueue, Long
 
     Optional<ServiceQueue> findByCode(String code);
 
-    boolean existsByCode(String code);
-
     List<ServiceQueue> findAllByOrderByNameAsc();
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
