@@ -16,34 +16,34 @@ There is one deployable backend and one database. The frontend is a static bundl
 
 | Package | Responsibility |
 |---|---|
-| `controller` | HTTP mapping, validation entry points, status/Location headers, and authenticated principal extraction. |
+| `controller` | HTTP mapping, validation, status/Location headers, the logged-in staff name, and notifying live boards after a change commits. |
 | `dto` | Immutable API contracts; JPA entities never cross the controller boundary. |
 | `entity` | Relational mappings and token state-transition invariants. |
 | `repository` | JPA queries, pagination, and the PostgreSQL locking query. |
-| `service` | Transactional commands, read models, wait estimation, and post-commit SSE fan-out. |
+| `service` | `QueueService` (all business logic, transactional), `WaitTimeEstimator`, and `QueueEventStream` (SSE subscribers). |
 | `security` | Database-backed user loading, BCrypt, Basic authentication, URL authorization, and CORS. |
-| `exception` | Central mapping to RFC 7807-style `ProblemDetail` responses. |
+| `exception` | Turns exceptions into consistent JSON error responses (`ProblemDetail`). |
 | `config` | Clock, OpenAPI, and idempotent local demo-data creation. |
-
-The command/query split is organizational, not CQRS: both use the same JPA model and database.
 
 ## Customer join transaction
 
 ```mermaid
 sequenceDiagram
     participant C as Customer
-    participant API as QueueCommandService
+    participant Ctl as PublicQueueController
+    participant Svc as QueueService
     participant Q as service_queues row
     participant T as queue_tokens
     participant SSE as QueueEventStream
 
-    C->>API: POST /queues/{id}/tokens
-    API->>Q: SELECT ... FOR UPDATE
-    API->>Q: reset daily sequence if needed; increment
-    API->>T: INSERT WAITING token
-    API-->>API: commit
-    API->>SSE: publish typed snapshot after commit
-    API-->>C: 201 Created + Location + token DTO
+    C->>Ctl: POST /queues/{id}/tokens
+    Ctl->>Svc: joinQueue (transaction starts)
+    Svc->>Q: SELECT ... FOR UPDATE
+    Svc->>Q: reset daily sequence if needed; increment
+    Svc->>T: INSERT WAITING token
+    Svc-->>Ctl: commit, return token
+    Ctl->>SSE: broadcast fresh snapshot
+    Ctl-->>C: 201 Created + Location + token
 ```
 
 Locking the queue row serializes daily number generation. The database uniqueness constraint on `(service_queue_id, service_date, sequence_number)` is the final defense if future code bypasses that service method.
@@ -57,7 +57,7 @@ SELECT *
 FROM queue_tokens
 WHERE service_queue_id = :queueId
   AND status = 'WAITING'
-ORDER BY priority DESC, joined_at ASC, id ASC
+ORDER BY joined_at ASC, id ASC
 FOR UPDATE SKIP LOCKED
 LIMIT 1;
 ```
@@ -110,8 +110,8 @@ Entity methods reject invalid transitions and verify that the assigned staff mem
 
 1. A client opens `GET /api/queues/{id}/events`.
 2. `QueueEventStream` stores its `SseEmitter` in a `ConcurrentHashMap` of `CopyOnWriteArrayList`s and immediately sends a snapshot.
-3. A command publishes `QueueChangedEvent` inside its transaction.
-4. `QueueChangedListener` runs in `AFTER_COMMIT`, queries a fresh snapshot, and broadcasts it.
+3. A controller calls a `QueueService` write method. When it returns, the transaction has committed.
+4. The controller loads a fresh snapshot and calls `QueueEventStream.broadcast`, so clients never see a change that later rolls back.
 5. Timeout, disconnect, completion, and error callbacks remove the emitter.
 
 SSE was chosen because the server initiates every live update. Compared with WebSocket/STOMP, it avoids a separate message protocol and client dependency. The tradeoff is that subscribers live in one process. This is acceptable because LinePilot intentionally runs one backend instance.
@@ -124,9 +124,9 @@ This estimate is intentionally explainable. It does not claim machine learning, 
 
 ## Security model
 
-- Staff/admin accounts are rows in `user_accounts`; passwords are BCrypt hashes.
-- Spring Security loads accounts through `DatabaseUserDetailsService`.
-- `/api/staff/**` accepts `STAFF` or `ADMIN`; `/api/admin/**` requires `ADMIN`.
+- Staff accounts are rows in `user_accounts`; passwords are BCrypt hashes.
+- Spring Security loads accounts through `DatabaseUserDetailsService`; every account has the `STAFF` role.
+- `/api/staff/**` and `/api/auth/me` require `STAFF`.
 - Queue browsing, joining, tracking by opaque UUID, cancellation by opaque UUID, and SSE are public.
 - The API is stateless and uses HTTP Basic for the local demo. Browser code keeps the Authorization value only in React memory and clears it on sign-out/reload.
 - CSRF is disabled because credentials are supplied explicitly in an Authorization header rather than ambient cookies. Outside localhost, HTTPS is mandatory.
@@ -141,15 +141,15 @@ The public UUID is a possession secret, not customer authentication. That limita
 | Closed queue join | 409 |
 | No waiting token | 409 |
 | Invalid lifecycle transition | 409 |
+| Two requests change the same token at once (e.g. cancel vs. call) | 409 via the `@Version` check on `QueueToken` |
 | Duplicate/constraint race | 409 without leaking SQL details |
 | Bean validation failure | 400 with a field-error map |
 | Missing/bad staff credentials | 401 |
-| Wrong role | 403 |
 | SSE disconnect/timeout | Emitter removed; browser EventSource reconnects |
 
 ## Index strategy
 
-- Partial call-next index: matches queue, priority, join time, and ID for waiting rows only.
+- Partial call-next index: queue, join time, and ID for waiting rows only.
 - History index: queue plus descending join time for paginated staff history.
 - Completed-service index: queue plus descending completion time for the ten-sample moving average.
 - Unique daily token constraint: prevents number duplication.
@@ -171,4 +171,4 @@ Both database and backend have health checks, and dependent containers wait for 
 
 ## Intentionally absent
 
-No microservices, gateway, Redis, Kafka, RabbitMQ, Kubernetes, distributed tracing, CQRS, event sourcing, or metrics stack is present. None is needed for the learning objective. If multi-instance SSE becomes a real requirement, that single change would justify a shared event transport; it should not be added preemptively.
+No microservices, gateway, Redis, Kafka, RabbitMQ, Kubernetes, distributed tracing, or metrics stack is present. None is needed for the learning objective. If multi-instance SSE becomes a real requirement, that single change would justify a shared event transport; it should not be added preemptively.

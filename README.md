@@ -1,160 +1,117 @@
 # LinePilot
 
-LinePilot is a focused digital queue application for service desks. Customers join remotely, receive a daily token, track the line live, and cancel if plans change. Staff call the next token, start service, mark no-shows, complete work, and inspect paginated history.
+LinePilot is a digital queue for service desks. Customers join remotely, get a daily token number (like `A-007`), watch the line move live, and can leave if their plans change. Staff call the next customer, start service, mark no-shows, complete service, and browse past tokens.
 
 Built by **Yashwardhan Verma** · [GitHub](https://github.com/YashwardhanV) · [LinkedIn](https://www.linkedin.com/in/yashwardhanv)
 
-The project is intentionally a **modular monolith**: React + TypeScript + Tailwind, one Spring Boot API, and one PostgreSQL database. It demonstrates SDE-1 backend depth without pretending to be a distributed platform.
+**Stack:** Java 21 · Spring Boot 3 · PostgreSQL 16 · React 18 + TypeScript + Tailwind · Docker Compose
 
-## Main features
+## Features
 
-- Public queue discovery, token creation, opaque tracking link, and cancellation.
-- Explicit `WAITING → CALLED → SERVING → COMPLETED` lifecycle, plus `SKIPPED` and `CANCELLED`.
-- Transactional daily token numbering with a database uniqueness constraint.
-- Concurrent call-next safety using PostgreSQL `FOR UPDATE SKIP LOCKED`.
-- Database-backed Spring Security accounts with `STAFF` and `ADMIN` roles.
-- Live queue boards over Server-Sent Events (SSE).
-- Moving-average wait estimate from the last ten completed service durations.
-- Paginated queue history, validation, RFC 7807-style error responses, and OpenAPI UI.
-- PostgreSQL Testcontainers integration tests, Docker Compose, health check, and GitHub Actions CI.
+- Customers join a queue without an account and track their token through a private link.
+- Token lifecycle: `WAITING → CALLED → SERVING → COMPLETED`, plus `SKIPPED` (no-show) and `CANCELLED`.
+- Two staff pressing **Call next** at the same moment always get different customers.
+- Daily token numbers per queue (`A-001`, `A-002`, …) that never repeat, even under concurrent joins.
+- Live queue board over Server-Sent Events (SSE).
+- Wait estimate based on the last ten completed services.
+- Staff sign-in with Spring Security, paginated history, and consistent JSON error responses.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    Browser["React customer / staff UI"] -->|"REST + SSE"| API["Spring Boot modular monolith"]
-    API --> Security["Spring Security"]
-    API --> Service["Queue command + query services"]
-    Service --> JPA["Spring Data JPA"]
-    JPA --> DB[("PostgreSQL")]
+    Browser["React app (customer + staff)"] -->|"REST + SSE"| API["Spring Boot API"]
+    API --> DB[("PostgreSQL")]
 ```
 
-The database is the correctness boundary. `call-next` selects a waiting token with a row-locking query, changes its state, records the claiming staff member, and commits as one transaction. A partial unique index also prevents one staff account from holding two active claims. SSE snapshots are published only after commit.
+One frontend, one backend, one database. The interesting part is inside the database transaction:
 
-More detail: [Architecture](docs/ARCHITECTURE.md) · [ER diagram](docs/ER_DIAGRAM.md)
+- **Call next** picks the oldest waiting token with `SELECT … FOR UPDATE SKIP LOCKED`, so two staff members can never claim the same token.
+- **Join queue** locks the queue's row while it increments the daily counter, so two customers never get the same number. A unique constraint backs this up.
+- A partial unique index allows each staff member only one active (`CALLED`/`SERVING`) token.
+- Live boards are notified only after the change has been committed.
 
-## Run in under five minutes
+More detail: [Architecture](docs/ARCHITECTURE.md) · [Database](docs/ER_DIAGRAM.md)
 
-Prerequisite: Docker Desktop or Docker Engine with Compose.
+## Run it
+
+Prerequisite: Docker with Compose.
 
 ```bash
-cp .env.example .env       # optional; defaults already work
+cp .env.example .env       # optional; defaults work
 docker compose up --build
 ```
 
-Open:
+- App: <http://localhost:3000>
+- Staff dashboard: <http://localhost:3000/staff> (log in as `staff1` or `staff2`, password `demo123`)
+- API docs (Swagger UI): <http://localhost:8080/swagger-ui.html>
 
-- Application: [http://localhost:3000](http://localhost:3000)
-- Staff dashboard: [http://localhost:3000/staff](http://localhost:3000/staff)
-- Health: [http://localhost:3000/actuator/health](http://localhost:3000/actuator/health)
-- OpenAPI UI: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
-
-Demo staff accounts are `staff1` and `staff2`; both use password `demo123`. These are local demo credentials created only when `APP_DEMO_DATA=true`.
-
-To stop:
-
-```bash
-docker compose down
-```
-
-Add `-v` only when you intentionally want to delete the local PostgreSQL volume.
+Stop with `docker compose down`. Add `-v` to also delete the database volume (needed if you ran an older version of the schema).
 
 ## Local development
 
-Start PostgreSQL, then run:
+Start PostgreSQL, then:
 
 ```bash
-cd backend
-mvn spring-boot:run
+cd backend && mvn spring-boot:run
 ```
-
-In another terminal:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cd frontend && npm install && npm run dev   # http://localhost:5173
 ```
 
-Configuration is environment-driven. See [.env.example](.env.example) and `backend/src/main/resources/application.yml`.
+Configuration comes from environment variables; see [.env.example](.env.example) and `backend/src/main/resources/application.yml`.
 
 ## API examples
 
-List queues:
-
 ```bash
+# list queues
 curl http://localhost:3000/api/queues
-```
 
-Join a queue (replace `1` if needed):
-
-```bash
+# join queue 1
 curl -i -X POST http://localhost:3000/api/queues/1/tokens \
-  -H "Content-Type: application/json" \
-  -d '{"customerName":"Asha"}'
+  -H "Content-Type: application/json" -d '{"customerName":"Asha"}'
+
+# staff: call the next customer
+curl -u staff1:demo123 -X POST http://localhost:3000/api/staff/queues/1/call-next
+
+# live updates
+curl -N http://localhost:3000/api/queues/1/events
 ```
-
-Call next as staff:
-
-```bash
-curl -u staff1:demo123 -X POST \
-  http://localhost:3000/api/staff/queues/1/call-next
-```
-
-Queue events:
-
-```bash
-curl -N -H "Accept: text/event-stream" \
-  http://localhost:3000/api/queues/1/events
-```
-
-OpenAPI describes all request/response schemas and endpoints.
 
 ## Tests
 
-Backend tests require a running Docker engine because integration tests create real PostgreSQL with Testcontainers:
+Backend integration tests use Testcontainers, so Docker must be running:
 
 ```bash
-cd backend
-mvn test
+cd backend && mvn test
 ```
 
-The suite covers business calculations, lifecycle rules, PostgreSQL constraints, REST validation, authentication/roles, cancellation, priority ordering, and simultaneous call-next requests.
-
-Frontend:
+They cover the token lifecycle, wait-time maths, the database constraints, REST validation and authentication, first-come-first-served ordering, cancellation, and two staff calling next at the same time against a real PostgreSQL.
 
 ```bash
-cd frontend
-npm ci
-npm run lint
-npm test
-npm run build
-npm audit --audit-level=moderate
+cd frontend && npm ci && npm run lint && npm test && npm run build
 ```
 
-## Important engineering decisions
+## Design decisions
 
-- **SSE over WebSocket:** updates are one-way; SSE has reconnection support and a smaller protocol surface.
-- **PostgreSQL lock over an in-memory mutex:** correctness must hold across request threads and is coupled to the database transaction.
-- **Flyway over Hibernate schema creation:** migrations make constraints and indexes reviewable.
-- **HTTP Basic for the local staff demo:** keeps authentication understandable and stateless. It must run behind HTTPS outside localhost; a secure cookie session is the likely next step.
-- **No broker/cache/orchestrator:** Kafka, Redis, and Kubernetes do not solve a requirement in this version.
+- **SSE instead of WebSocket:** updates only flow from server to browser, and the browser's `EventSource` reconnects by itself.
+- **Database lock instead of a Java lock:** `synchronized` only protects one JVM and isn't tied to the transaction; the database row lock is.
+- **Flyway instead of auto-generated schema:** constraints and indexes are written down and reviewable.
+- **HTTP Basic for staff:** simple and stateless for a demo; it must run behind HTTPS outside localhost.
+- **No Redis, Kafka or Kubernetes:** nothing in this app needs them.
 
 ## Known limitations
 
-- SSE subscribers live in memory, so the design intentionally supports one backend instance. A multi-instance version would need a shared event transport.
-- Staff credentials use HTTP Basic. Production deployment requires HTTPS and should consider short-lived secure-cookie sessions.
-- Anyone holding the unguessable public token UUID can view/cancel that token; there is no customer account or recovery flow.
-- The admin queue-management API has no matching frontend page.
-- No browser end-to-end test is included; API integration and component tests cover the critical paths.
-- Wait estimates are simple moving averages and do not account for staff count, breaks, service type, or time of day.
+- SSE subscribers are kept in memory, so only one backend instance is supported.
+- Anyone with a token's tracking link can view or cancel that token; customers have no accounts.
+- Queues are created by seed data; there is no admin screen.
+- Wait estimates are a simple average and ignore staff count, breaks and time of day.
+- No browser end-to-end tests yet.
 
-## Future improvements
+## Next steps
 
-1. Idempotency keys for customer join requests.
-2. Secure cookie-based staff sessions and rate limiting at the deployment edge.
-3. Admin UI for queue configuration and authorized priority changes.
-4. Browser end-to-end tests for customer and staff flows.
-5. Optional notifications (email/SMS) only after delivery retries and credential management are designed.
-6. A shared event channel only if a demonstrated need for multiple backend instances appears.
-
+1. Browser end-to-end test of the customer and staff flows (Playwright).
+2. Session-cookie login for staff instead of HTTP Basic.
+3. Idempotency key on "join queue" so a double-submit can't create two tokens.
+4. Admin screen for creating and closing queues.
