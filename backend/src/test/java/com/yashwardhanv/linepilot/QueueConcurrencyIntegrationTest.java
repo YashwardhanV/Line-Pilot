@@ -5,7 +5,7 @@ import com.yashwardhanv.linepilot.entity.ServiceQueue;
 import com.yashwardhanv.linepilot.entity.TokenStatus;
 import com.yashwardhanv.linepilot.entity.UserAccount;
 import com.yashwardhanv.linepilot.exception.ConflictException;
-import com.yashwardhanv.linepilot.service.QueueCommandService;
+import com.yashwardhanv.linepilot.service.QueueService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -23,14 +23,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class QueueConcurrencyIntegrationTest extends PostgresIntegrationTest {
 
     @Autowired
-    QueueCommandService commandService;
+    QueueService queueService;
 
     @Test
     void concurrentCallNextRequestsNeverClaimTheSameSingleToken() throws Exception {
         ServiceQueue queue = queueRepository.save(new ServiceQueue("ONE", "Single token", "Desk", "S", 5));
         userRepository.save(new UserAccount("staff1", "hash", "Staff One"));
         userRepository.save(new UserAccount("staff2", "hash", "Staff Two"));
-        commandService.joinQueue(queue.getId(), "Only Customer");
+        queueService.joinQueue(queue.getId(), "Only Customer");
 
         List<CallResult> results = callConcurrently(queue.getId(), List.of("staff1", "staff2"));
 
@@ -53,8 +53,8 @@ class QueueConcurrencyIntegrationTest extends PostgresIntegrationTest {
         ServiceQueue queue = queueRepository.save(new ServiceQueue("TWO", "Two tokens", "Desk", "T", 5));
         userRepository.save(new UserAccount("staff1", "hash", "Staff One"));
         userRepository.save(new UserAccount("staff2", "hash", "Staff Two"));
-        commandService.joinQueue(queue.getId(), "First Customer");
-        commandService.joinQueue(queue.getId(), "Second Customer");
+        queueService.joinQueue(queue.getId(), "First Customer");
+        queueService.joinQueue(queue.getId(), "Second Customer");
 
         List<CallResult> results = callConcurrently(queue.getId(), List.of("staff1", "staff2"));
 
@@ -76,7 +76,7 @@ class QueueConcurrencyIntegrationTest extends PostgresIntegrationTest {
                         return new CallResult(null, new IllegalStateException("Start latch timed out"));
                     }
                     try {
-                        return new CallResult(commandService.callNext(queueId, username), null);
+                        return new CallResult(queueService.callNext(queueId, username), null);
                     } catch (RuntimeException exception) {
                         return new CallResult(null, exception);
                     }

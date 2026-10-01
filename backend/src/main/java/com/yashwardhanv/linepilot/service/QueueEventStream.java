@@ -54,10 +54,6 @@ public class QueueEventStream {
         }
     }
 
-    int subscriberCount(Long queueId) {
-        return emitters.getOrDefault(queueId, new CopyOnWriteArrayList<>()).size();
-    }
-
     private void send(SseEmitter emitter, QueueSnapshotResponse snapshot) throws IOException {
         emitter.send(SseEmitter.event()
                 .id(snapshot.generatedAt().toString())

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -35,6 +36,19 @@ public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
              LIMIT 1
             """, nativeQuery = true)
     Optional<QueueToken> lockNextWaitingToken(@Param("queueId") Long queueId);
+
+    // Waiting tokens that joined before the given token (ties broken by id).
+    @Query(value = """
+            SELECT COUNT(*)
+              FROM queue_tokens
+             WHERE service_queue_id = :queueId
+               AND status = 'WAITING'
+               AND id <> :tokenId
+               AND (joined_at < :joinedAt OR (joined_at = :joinedAt AND id < :tokenId))
+            """, nativeQuery = true)
+    long countWaitingAhead(@Param("queueId") Long queueId,
+                           @Param("joinedAt") Instant joinedAt,
+                           @Param("tokenId") Long tokenId);
 
     @EntityGraph(attributePaths = {"claimedBy"})
     Optional<QueueToken> findByIdAndClaimedByUsername(Long tokenId, String username);

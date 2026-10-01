@@ -5,7 +5,7 @@ import com.yashwardhanv.linepilot.entity.UserAccount;
 import com.yashwardhanv.linepilot.repository.QueueTokenRepository;
 import com.yashwardhanv.linepilot.repository.ServiceQueueRepository;
 import com.yashwardhanv.linepilot.repository.UserAccountRepository;
-import com.yashwardhanv.linepilot.service.QueueCommandService;
+import com.yashwardhanv.linepilot.service.QueueService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -19,18 +19,18 @@ public class DemoDataInitializer implements ApplicationRunner {
     private final UserAccountRepository userRepository;
     private final ServiceQueueRepository queueRepository;
     private final QueueTokenRepository tokenRepository;
-    private final QueueCommandService commandService;
+    private final QueueService queueService;
     private final PasswordEncoder passwordEncoder;
 
     public DemoDataInitializer(UserAccountRepository userRepository,
                                ServiceQueueRepository queueRepository,
                                QueueTokenRepository tokenRepository,
-                               QueueCommandService commandService,
+                               QueueService queueService,
                                PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.queueRepository = queueRepository;
         this.tokenRepository = tokenRepository;
-        this.commandService = commandService;
+        this.queueService = queueService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -50,9 +50,9 @@ public class DemoDataInitializer implements ApplicationRunner {
 
         if (tokenRepository.countByServiceQueueIdAndServiceDate(
                 queue.getId(), java.time.LocalDate.now(java.time.ZoneOffset.UTC)) == 0) {
-            commandService.joinQueue(queue.getId(), "Demo Customer 1");
-            commandService.joinQueue(queue.getId(), "Demo Customer 2");
-            commandService.joinQueue(queue.getId(), "Demo Customer 3");
+            queueService.joinQueue(queue.getId(), "Demo Customer 1");
+            queueService.joinQueue(queue.getId(), "Demo Customer 2");
+            queueService.joinQueue(queue.getId(), "Demo Customer 3");
         }
     }
 

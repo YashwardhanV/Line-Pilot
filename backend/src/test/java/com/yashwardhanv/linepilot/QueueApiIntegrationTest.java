@@ -2,7 +2,7 @@ package com.yashwardhanv.linepilot;
 
 import com.yashwardhanv.linepilot.entity.ServiceQueue;
 import com.yashwardhanv.linepilot.entity.UserAccount;
-import com.yashwardhanv.linepilot.service.QueueCommandService;
+import com.yashwardhanv.linepilot.service.QueueService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +27,7 @@ class QueueApiIntegrationTest extends PostgresIntegrationTest {
     PasswordEncoder passwordEncoder;
 
     @Autowired
-    QueueCommandService commandService;
+    QueueService queueService;
 
     private ServiceQueue queue;
 
@@ -49,7 +49,8 @@ class QueueApiIntegrationTest extends PostgresIntegrationTest {
                         .content("{\"customerName\":\"Asha\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.displayNumber").value("A-001"))
-                .andExpect(jsonPath("$.status").value("WAITING"));
+                .andExpect(jsonPath("$.status").value("WAITING"))
+                .andExpect(jsonPath("$.peopleAhead").value(0));
     }
 
     @Test
@@ -64,7 +65,7 @@ class QueueApiIntegrationTest extends PostgresIntegrationTest {
 
     @Test
     void callNextRequiresAuthenticationAndAcceptsStaffRole() throws Exception {
-        commandService.joinQueue(queue.getId(), "Customer");
+        queueService.joinQueue(queue.getId(), "Customer");
 
         mockMvc.perform(post("/api/staff/queues/{queueId}/call-next", queue.getId()))
                 .andExpect(status().isUnauthorized());
@@ -78,7 +79,7 @@ class QueueApiIntegrationTest extends PostgresIntegrationTest {
 
     @Test
     void cancellingTwiceReturnsConflict() throws Exception {
-        String publicId = commandService.joinQueue(queue.getId(), "Customer").publicId().toString();
+        String publicId = queueService.joinQueue(queue.getId(), "Customer").publicId().toString();
 
         mockMvc.perform(post("/api/tokens/{publicId}/cancel", publicId))
                 .andExpect(status().isOk())
