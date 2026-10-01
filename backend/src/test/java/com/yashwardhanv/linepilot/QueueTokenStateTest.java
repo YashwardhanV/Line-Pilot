@@ -5,6 +5,7 @@ import com.yashwardhanv.linepilot.entity.ServiceQueue;
 import com.yashwardhanv.linepilot.entity.TokenStatus;
 import com.yashwardhanv.linepilot.entity.UserAccount;
 import com.yashwardhanv.linepilot.entity.UserRole;
+import com.yashwardhanv.linepilot.exception.ConflictException;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -40,7 +41,7 @@ class QueueTokenStateTest {
         token.cancel(clock);
 
         assertThatThrownBy(() -> token.cancel(clock))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(ConflictException.class);
     }
 
     private QueueToken token() {

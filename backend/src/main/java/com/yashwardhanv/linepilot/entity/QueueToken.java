@@ -1,5 +1,6 @@
 package com.yashwardhanv.linepilot.entity;
 
+import com.yashwardhanv.linepilot.exception.ConflictException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -136,13 +137,13 @@ public class QueueToken {
                 && claimedBy.getId() != null
                 && claimedBy.getId().equals(staff.getId());
         if (claimedBy == null || (claimedBy != staff && !samePersistedUser)) {
-            throw new IllegalStateException("Token is assigned to a different staff member");
+            throw new ConflictException("Token is assigned to a different staff member");
         }
     }
 
     private void requireStatus(TokenStatus expected) {
         if (status != expected) {
-            throw new IllegalStateException("Expected token status " + expected + " but was " + status);
+            throw new ConflictException("Expected token status " + expected + " but was " + status);
         }
     }
 

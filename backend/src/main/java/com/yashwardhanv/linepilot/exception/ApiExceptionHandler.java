@@ -4,6 +4,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -21,12 +22,24 @@ public class ApiExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "Resource not found", exception.getMessage());
     }
 
-    @ExceptionHandler({ConflictException.class, IllegalStateException.class, DataIntegrityViolationException.class})
-    ResponseEntity<ProblemDetail> handleConflict(Exception exception) {
-        String detail = exception instanceof DataIntegrityViolationException
-                ? "The request conflicts with the current database state"
-                : exception.getMessage();
-        return problem(HttpStatus.CONFLICT, "State conflict", detail);
+    @ExceptionHandler(ConflictException.class)
+    ResponseEntity<ProblemDetail> handleConflict(ConflictException exception) {
+        return problem(HttpStatus.CONFLICT, "State conflict", exception.getMessage());
+    }
+
+    // Two requests changed the same token at the same time (for example a customer cancels
+    // while staff calls it). The @Version check on QueueToken detects this; the loser gets 409.
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    ResponseEntity<ProblemDetail> handleConcurrentUpdate(ObjectOptimisticLockingFailureException exception) {
+        return problem(HttpStatus.CONFLICT, "State conflict",
+                "This token was changed by someone else. Refresh and try again.");
+    }
+
+    // A database constraint rejected the change, e.g. one staff member double-clicking "Call next".
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ProblemDetail> handleConstraintViolation(DataIntegrityViolationException exception) {
+        return problem(HttpStatus.CONFLICT, "State conflict",
+                "The request conflicts with the current database state");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
