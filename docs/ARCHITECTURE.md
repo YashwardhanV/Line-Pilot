@@ -1,95 +1,63 @@
-# LinePilot Architecture
-
-## System context
+# LinePilot architecture
 
 ```mermaid
 flowchart LR
-    Customer["Customer browser"] -->|"Public REST + SSE"| Frontend["React + TypeScript"]
-    Staff["Staff browser"] -->|"Authenticated REST + public SSE"| Frontend
-    Frontend -->|"/api via Nginx"| Backend["Spring Boot"]
-    Backend -->|"JPA / JDBC transactions"| Postgres[("PostgreSQL 16")]
+    Customer["Customer browser"] --> Nginx["React app · Nginx"]
+    Staff["Staff browser"] --> Nginx
+    Nginx -->|"/api (REST + SSE)"| Boot["Spring Boot"]
+    Boot --> DB[("PostgreSQL 16")]
 ```
 
-There is one deployable backend and one database. The frontend is a static bundle served by Nginx, which also proxies API and SSE traffic. This boundary is enough to demonstrate integration without creating service-to-service failure modes that the product does not need.
+Nginx serves the React bundle and proxies API and SSE traffic to a single Spring Boot backend.
 
-## Backend package responsibilities
+## Backend packages
 
 | Package | Responsibility |
 |---|---|
-| `controller` | HTTP mapping, validation, status/Location headers, the logged-in staff name, and notifying live boards after a change commits. |
-| `dto` | Immutable API contracts; JPA entities never cross the controller boundary. |
-| `entity` | Relational mappings and token state-transition invariants. |
-| `repository` | JPA queries, pagination, and the PostgreSQL locking query. |
-| `service` | `QueueService` (all business logic, transactional), `WaitTimeEstimator`, and `QueueEventStream` (SSE subscribers). |
-| `security` | Database-backed user loading, BCrypt, Basic authentication, URL authorization, and CORS. |
-| `exception` | Turns exceptions into consistent JSON error responses (`ProblemDetail`). |
-| `config` | Clock, OpenAPI, and idempotent local demo-data creation. |
+| `controller` | HTTP mapping, validation, and notifying live boards after a change commits |
+| `dto` | API contracts; entities never leave the backend |
+| `entity` | Table mappings and token state-transition rules |
+| `repository` | JPA queries, pagination, and the locking query |
+| `service` | `QueueService` (business logic), `WaitTimeEstimator`, `QueueEventStream` (SSE) |
+| `security` | BCrypt, HTTP Basic, URL rules, CORS |
+| `exception` | Consistent JSON errors (`ProblemDetail`) |
+| `config` | Clock, OpenAPI, demo data |
 
-## Customer join transaction
+## Data model
 
 ```mermaid
-sequenceDiagram
-    participant C as Customer
-    participant Ctl as PublicQueueController
-    participant Svc as QueueService
-    participant Q as service_queues row
-    participant T as queue_tokens
-    participant SSE as QueueEventStream
-
-    C->>Ctl: POST /queues/{id}/tokens
-    Ctl->>Svc: joinQueue (transaction starts)
-    Svc->>Q: SELECT ... FOR UPDATE
-    Svc->>Q: reset daily sequence if needed; increment
-    Svc->>T: INSERT WAITING token
-    Svc-->>Ctl: commit, return token
-    Ctl->>SSE: broadcast fresh snapshot
-    Ctl-->>C: 201 Created + Location + token
+erDiagram
+    USER_ACCOUNTS ||--o{ QUEUE_TOKENS : claims
+    SERVICE_QUEUES ||--o{ QUEUE_TOKENS : contains
 ```
 
-Locking the queue row serializes daily number generation. The database uniqueness constraint on `(service_queue_id, service_date, sequence_number)` is the final defense if future code bypasses that service method.
+- `service_queues`: queue settings plus the daily token counter (`sequence_date`, `last_sequence`).
+- `queue_tokens`: both the live queue and the history. Finished tokens stay for reporting and wait estimates.
+- `user_accounts`: staff logins. Customers don't have accounts.
 
-## Concurrent call-next transaction
+Key constraints:
+- **Unique `(queue, date, sequence)`:** one token number per queue per day.
+- **Unique `public_id` (UUID):** the customer's tracking handle.
+- **Partial unique index on `claimed_by_id` for `CALLED`/`SERVING`:** one active token per staff member.
+- **`version` column on `queue_tokens`:** a customer cancel and a staff call on the same token can't silently overwrite each other; the loser gets `409`.
 
-The critical query is deliberately PostgreSQL-specific:
+## Joining a queue
+
+`joinQueue` locks the queue row (`SELECT … FOR UPDATE`), resets the counter if the date changed, increments it, and inserts a `WAITING` token, all in one transaction. The unique constraint backs this up if any other code path ever skips the lock.
+
+## Calling the next customer
 
 ```sql
-SELECT *
-FROM queue_tokens
-WHERE service_queue_id = :queueId
-  AND status = 'WAITING'
-ORDER BY joined_at ASC, id ASC
+SELECT * FROM queue_tokens
+WHERE service_queue_id = :queueId AND status = 'WAITING'
+ORDER BY joined_at, id
 FOR UPDATE SKIP LOCKED
 LIMIT 1;
 ```
 
-```mermaid
-sequenceDiagram
-    participant S1 as Staff 1 transaction
-    participant DB as PostgreSQL
-    participant S2 as Staff 2 transaction
+`FOR UPDATE` locks the chosen row until commit. `SKIP LOCKED` makes a second staff member take the next row instead of waiting. With only one token waiting, one request wins and the other gets `409`. A partial index on `(service_queue_id, joined_at, id) WHERE status = 'WAITING'` keeps this fast.
 
-    par simultaneous call-next
-        S1->>DB: lock next WAITING row
-        S2->>DB: lock next WAITING row, skip locks
-    end
-    DB-->>S1: Token A
-    DB-->>S2: Token B or no row
-    S1->>DB: A → CALLED, claimed_by=Staff 1
-    S2->>DB: B → CALLED, claimed_by=Staff 2
-    DB-->>S1: commit
-    DB-->>S2: commit
-```
-
-Why both `FOR UPDATE` and `SKIP LOCKED`:
-
-- `FOR UPDATE` prevents another transaction from modifying the selected row until commit.
-- `SKIP LOCKED` allows a second staff transaction to take the next eligible row instead of waiting for the first.
-- If there is only one token, one transaction succeeds and the other receives a `409 Conflict`; it never receives the same token.
-- The partial unique index on `claimed_by_id` for `CALLED`/`SERVING` states prevents one staff account from holding two active assignments, including race paths not caught by the pre-check.
-
-This is not a distributed lock. It is ordinary transactional database concurrency in the system that owns the state.
-
-## Token state machine
+## Token states
 
 ```mermaid
 stateDiagram-v2
@@ -97,78 +65,31 @@ stateDiagram-v2
     WAITING --> CALLED: staff calls next
     WAITING --> CANCELLED: customer cancels
     CALLED --> SERVING: staff starts
-    CALLED --> SKIPPED: staff marks no-show
+    CALLED --> SKIPPED: no-show
     SERVING --> COMPLETED: staff completes
-    COMPLETED --> [*]
-    SKIPPED --> [*]
-    CANCELLED --> [*]
 ```
 
-Entity methods reject invalid transitions and verify that the assigned staff member owns staff-only transitions. Services wrap each transition in a transaction and translate invalid current state into HTTP 409.
+Entity methods reject invalid transitions and check that the staff member owns the token. The API turns an invalid transition into `409`.
 
-## Live update flow
+## Live updates (SSE)
 
-1. A client opens `GET /api/queues/{id}/events`.
-2. `QueueEventStream` stores its `SseEmitter` in a `ConcurrentHashMap` of `CopyOnWriteArrayList`s and immediately sends a snapshot.
-3. A controller calls a `QueueService` write method. When it returns, the transaction has committed.
-4. The controller loads a fresh snapshot and calls `QueueEventStream.broadcast`, so clients never see a change that later rolls back.
-5. Timeout, disconnect, completion, and error callbacks remove the emitter.
+A client opens `GET /api/queues/{id}/events` and immediately receives a snapshot. After each write commits, the controller broadcasts a fresh snapshot, so clients never see a change that later rolls back. Emitters are stored in memory and removed on timeout or disconnect, and the browser's `EventSource` reconnects on its own. Because subscribers live in memory, only one backend instance is supported.
 
-SSE was chosen because the server initiates every live update. Compared with WebSocket/STOMP, it avoids a separate message protocol and client dependency. The tradeoff is that subscribers live in one process. This is acceptable because LinePilot intentionally runs one backend instance.
+## Wait estimate
 
-## Wait estimation
+The estimate is the average of the last ten service durations (`serving_at` → `completed_at`), times the number of people ahead. If there's no history yet, the queue's default minutes are used instead.
 
-`WaitTimeEstimator` receives up to ten recent non-zero service durations measured from `serving_at` to `completed_at`. It rounds the average to minutes and multiplies by people ahead. If no completed sample exists, the queue’s configured fallback is used.
+## Security
 
-This estimate is intentionally explainable. It does not claim machine learning, forecasting, or capacity modeling.
+- Staff passwords are BCrypt-hashed in `user_accounts`.
+- `/api/staff/**` and `/api/auth/me` require login over HTTP Basic. Everything else is public: browsing, joining, tracking or cancelling by UUID, and SSE.
+- CSRF is off because credentials go in the `Authorization` header, not a cookie. Use HTTPS outside localhost.
 
-## Security model
+## Errors
 
-- Staff accounts are rows in `user_accounts`; passwords are BCrypt hashes.
-- Spring Security loads accounts through `DatabaseUserDetailsService`; every account has the `STAFF` role.
-- `/api/staff/**` and `/api/auth/me` require `STAFF`.
-- Queue browsing, joining, tracking by opaque UUID, cancellation by opaque UUID, and SSE are public.
-- The API is stateless and uses HTTP Basic for the local demo. Browser code keeps the Authorization value only in React memory and clears it on sign-out/reload.
-- CSRF is disabled because credentials are supplied explicitly in an Authorization header rather than ambient cookies. Outside localhost, HTTPS is mandatory.
-
-The public UUID is a possession secret, not customer authentication. That limitation is deliberate and documented.
-
-## Failure handling
-
-| Failure | API behavior |
+| Case | Response |
 |---|---|
-| Unknown queue/token | 404 `ProblemDetail` |
-| Closed queue join | 409 |
-| No waiting token | 409 |
-| Invalid lifecycle transition | 409 |
-| Two requests change the same token at once (e.g. cancel vs. call) | 409 via the `@Version` check on `QueueToken` |
-| Duplicate/constraint race | 409 without leaking SQL details |
-| Bean validation failure | 400 with a field-error map |
-| Missing/bad staff credentials | 401 |
-| SSE disconnect/timeout | Emitter removed; browser EventSource reconnects |
-
-## Index strategy
-
-- Partial call-next index: queue, join time, and ID for waiting rows only.
-- History index: queue plus descending join time for paginated staff history.
-- Completed-service index: queue plus descending completion time for the ten-sample moving average.
-- Unique daily token constraint: prevents number duplication.
-- Unique active-staff partial index: prevents simultaneous active assignments for one staff member.
-
-Indexes are tied to concrete queries; there is no speculative indexing.
-
-## Deployment
-
-```mermaid
-flowchart TB
-    subgraph Compose["Docker Compose"]
-      Nginx["frontend · Nginx :3000"] --> Boot["backend · Java 21 :8080"]
-      Boot --> DB[("db · PostgreSQL 16 volume")]
-    end
-```
-
-Both database and backend have health checks, and dependent containers wait for healthy prerequisites. Flyway applies the schema before Hibernate validates it. All credentials/ports are environment-configurable.
-
-## Intentionally absent
-
-No microservices, gateway, Redis, Kafka, RabbitMQ, Kubernetes, distributed tracing, or metrics stack is present. None is needed for the learning objective. If multi-instance SSE becomes a real requirement, that single change would justify a shared event transport; it should not be added preemptively.
+| Unknown queue or token | 404 |
+| Closed queue, empty queue, invalid transition, concurrent edit, constraint race | 409 |
+| Validation failure | 400 with field errors |
+| Missing or wrong staff credentials | 401 |

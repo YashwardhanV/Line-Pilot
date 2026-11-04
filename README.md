@@ -31,7 +31,7 @@ One frontend, one backend, one database. The interesting part is inside the data
 - A partial unique index allows each staff member only one active (`CALLED`/`SERVING`) token.
 - Live boards are notified only after the change has been committed.
 
-More detail: [Architecture](docs/ARCHITECTURE.md) · [Database](docs/ER_DIAGRAM.md)
+More detail, including the data model, locking and live updates: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Run it
 
