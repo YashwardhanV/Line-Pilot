@@ -45,4 +45,22 @@ class QueueOrderingIntegrationTest extends PostgresIntegrationTest {
                 .extracting(token -> token.getStatus())
                 .isEqualTo(TokenStatus.CANCELLED);
     }
+
+    @Test
+    void waitEstimateSharesTheLineBetweenStaffWhoAreServing() {
+        ServiceQueue queue = queueRepository.save(new ServiceQueue("PAR", "Parallel", "Desk", "P", 6));
+        userRepository.save(new UserAccount("staff1", "hash", "Staff One"));
+        userRepository.save(new UserAccount("staff2", "hash", "Staff Two"));
+        queueService.joinQueue(queue.getId(), "First");
+        queueService.joinQueue(queue.getId(), "Second");
+        queueService.joinQueue(queue.getId(), "Third");
+        queueService.callNext(queue.getId(), "staff1");
+        queueService.callNext(queue.getId(), "staff2");
+
+        TokenResponse fourth = queueService.joinQueue(queue.getId(), "Fourth");
+
+        // Two being served plus one waiting are ahead; two staff means two rounds of 6 minutes.
+        assertThat(fourth.peopleAhead()).isEqualTo(3);
+        assertThat(fourth.estimatedWaitMinutes()).isEqualTo(12);
+    }
 }

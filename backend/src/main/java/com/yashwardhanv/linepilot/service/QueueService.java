@@ -41,6 +41,9 @@ public class QueueService {
     private static final List<TokenStatus> CLAIMED_STATUSES =
             List.of(TokenStatus.CALLED, TokenStatus.SERVING);
 
+    // A staff member who finished a customer within this window still counts as working the queue.
+    private static final Duration ACTIVE_STAFF_WINDOW = Duration.ofMinutes(30);
+
     private final ServiceQueueRepository queueRepository;
     private final QueueTokenRepository tokenRepository;
     private final UserAccountRepository userRepository;
@@ -228,11 +231,20 @@ public class QueueService {
     }
 
     private long estimate(ServiceQueue queue, long peopleAhead) {
+        if (peopleAhead <= 0) {
+            return 0;
+        }
         return waitTimeEstimator.estimateMinutes(
-                peopleAhead,
-                recentServiceDurations(queue.getId()),
-                queue.getDefaultServiceMinutes()
-        );
+                peopleAhead, averageServiceMinutes(queue), activeStaff(queue.getId()));
+    }
+
+    private long averageServiceMinutes(ServiceQueue queue) {
+        return waitTimeEstimator.averageServiceMinutes(
+                recentServiceDurations(queue.getId()), queue.getDefaultServiceMinutes());
+    }
+
+    private long activeStaff(Long queueId) {
+        return tokenRepository.countActiveStaff(queueId, clock.instant().minus(ACTIVE_STAFF_WINDOW));
     }
 
     private List<Duration> recentServiceDurations(Long queueId) {

@@ -14,7 +14,7 @@ class WaitTimeEstimatorTest {
 
     @Test
     void usesConfiguredFallbackWhenNoCompletedServicesExist() {
-        assertThat(estimator.estimateMinutes(3, List.of(), 6)).isEqualTo(18);
+        assertThat(estimator.averageServiceMinutes(List.of(), 6)).isEqualTo(6);
     }
 
     @Test
@@ -25,11 +25,27 @@ class WaitTimeEstimatorTest {
                 Duration.ofMinutes(9));
 
         assertThat(estimator.averageServiceMinutes(samples, 6)).isEqualTo(6);
-        assertThat(estimator.estimateMinutes(2, samples, 6)).isEqualTo(12);
+    }
+
+    @Test
+    void oneStaffMemberServesEveryoneAheadInTurn() {
+        assertThat(estimator.estimateMinutes(3, 6, 1)).isEqualTo(18);
+    }
+
+    @Test
+    void peopleAheadAreSharedBetweenActiveStaff() {
+        // 3 people ahead, 2 staff: two rounds of service, not three.
+        assertThat(estimator.estimateMinutes(3, 6, 2)).isEqualTo(12);
+        assertThat(estimator.estimateMinutes(4, 6, 2)).isEqualTo(12);
+    }
+
+    @Test
+    void treatsNoActiveStaffAsOne() {
+        assertThat(estimator.estimateMinutes(2, 5, 0)).isEqualTo(10);
     }
 
     @Test
     void returnsZeroWhenNoOneIsAhead() {
-        assertThat(estimator.estimateMinutes(0, List.of(Duration.ofMinutes(5)), 6)).isZero();
+        assertThat(estimator.estimateMinutes(0, 5, 1)).isZero();
     }
 }

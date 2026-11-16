@@ -62,6 +62,17 @@ public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
                            @Param("joinedAt") Instant joinedAt,
                            @Param("tokenId") Long tokenId);
 
+    // Staff who are serving this queue now, or finished a customer here recently.
+    @Query(value = """
+            SELECT COUNT(DISTINCT claimed_by_id)
+              FROM queue_tokens
+             WHERE service_queue_id = :queueId
+               AND claimed_by_id IS NOT NULL
+               AND (status IN ('CALLED', 'SERVING')
+                    OR (status IN ('COMPLETED', 'SKIPPED') AND completed_at >= :since))
+            """, nativeQuery = true)
+    long countActiveStaff(@Param("queueId") Long queueId, @Param("since") Instant since);
+
     @EntityGraph(attributePaths = {"claimedBy"})
     Optional<QueueToken> findByIdAndClaimedByUsername(Long tokenId, String username);
 
