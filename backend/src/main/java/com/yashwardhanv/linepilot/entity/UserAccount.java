@@ -26,6 +26,9 @@ public class UserAccount {
     @Column(name = "display_name", nullable = false, length = 100)
     private String displayName;
 
+    @Column(name = "counter_label", length = 40)
+    private String counterLabel;
+
     @Column(nullable = false)
     private boolean enabled = true;
 
@@ -41,10 +44,20 @@ public class UserAccount {
         this.displayName = displayName;
     }
 
+    public UserAccount(String username, String passwordHash, String displayName, String counterLabel) {
+        this(username, passwordHash, displayName);
+        this.counterLabel = counterLabel;
+    }
+
+    public void assignCounter(String counterLabel) {
+        this.counterLabel = counterLabel;
+    }
+
     public Long getId() { return id; }
     public String getUsername() { return username; }
     public String getPasswordHash() { return passwordHash; }
     public String getDisplayName() { return displayName; }
+    public String getCounterLabel() { return counterLabel; }
     public boolean isEnabled() { return enabled; }
     public Instant getCreatedAt() { return createdAt; }
 }

@@ -277,6 +277,7 @@ public class QueueService {
                 peopleAhead,
                 estimate(token.getServiceQueue(), peopleAhead),
                 token.getClaimedBy() == null ? null : token.getClaimedBy().getDisplayName(),
+                token.getCounterLabel(),
                 token.getJoinedAt(),
                 token.getUpdatedAt()
         );
@@ -296,6 +297,7 @@ public class QueueService {
                 token.getDisplayNumber(),
                 token.getStatus(),
                 token.getClaimedBy() == null ? null : token.getClaimedBy().getDisplayName(),
+                token.getCounterLabel(),
                 token.getJoinedAt(),
                 token.getUpdatedAt()
         );
@@ -305,6 +307,7 @@ public class QueueService {
         return new HistoryItemResponse(
                 token.getId(), token.getDisplayNumber(), token.getCustomerName(), token.getStatus(),
                 token.getClaimedBy() == null ? null : token.getClaimedBy().getDisplayName(),
+                token.getCounterLabel(),
                 token.getJoinedAt(), token.getCalledAt(), token.getServingAt(), token.getCompletedAt()
         );
     }

@@ -10,6 +10,7 @@ public record HistoryItemResponse(
         String customerName,
         TokenStatus status,
         String claimedBy,
+        String counterLabel,
         Instant joinedAt,
         Instant calledAt,
         Instant servingAt,

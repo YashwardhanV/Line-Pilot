@@ -110,7 +110,7 @@ export function StaffPage() {
     <div className="mx-auto max-w-7xl px-5 py-10 lg:px-8 lg:py-12">
       <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-violet">Signed in as {user.displayName}</p>
+          <p className="text-sm font-semibold text-violet">Signed in as {user.displayName}{user.counterLabel ? ` · ${user.counterLabel}` : ""}</p>
           <h1 className="mt-1 font-display text-4xl font-bold tracking-tight">Service control room</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -134,6 +134,7 @@ export function StaffPage() {
           <OperatorPanel
             assignedToken={assignedToken}
             staffName={user.displayName}
+            counterLabel={user.counterLabel}
             queueId={selectedQueueId}
             busy={busy}
             onAction={(path) => void perform(path)}

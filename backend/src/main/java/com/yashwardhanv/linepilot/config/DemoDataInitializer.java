@@ -42,8 +42,8 @@ public class DemoDataInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        createUser("staff1", "Anika Rao");
-        createUser("staff2", "Kabir Shah");
+        createUser("staff1", "Anika Rao", "Counter 1");
+        createUser("staff2", "Kabir Shah", "Counter 2");
 
         ServiceQueue queue = queueRepository.findByCode("GENERAL")
                 .orElseGet(() -> queueRepository.save(new ServiceQueue(
@@ -62,10 +62,13 @@ public class DemoDataInitializer implements ApplicationRunner {
         }
     }
 
-    private void createUser(String username, String displayName) {
-        if (!userRepository.existsByUsername(username)) {
-            userRepository.save(new UserAccount(
-                    username, passwordEncoder.encode("demo123"), displayName));
+    private void createUser(String username, String displayName, String counterLabel) {
+        UserAccount user = userRepository.findByUsername(username)
+                .orElseGet(() -> new UserAccount(
+                        username, passwordEncoder.encode("demo123"), displayName, counterLabel));
+        if (user.getCounterLabel() == null) {
+            user.assignCounter(counterLabel); // demo users created before counters existed
         }
+        userRepository.save(user);
     }
 }

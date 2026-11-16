@@ -16,6 +16,7 @@ public record TokenResponse(
         long peopleAhead,
         long estimatedWaitMinutes,
         String claimedBy,
+        String counterLabel,
         Instant joinedAt,
         Instant updatedAt
 ) {

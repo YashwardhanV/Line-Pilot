@@ -28,7 +28,7 @@ export function HistoryTable({ history, onPrevious, onNext }: HistoryTableProps)
                 <td className="px-6 py-4 font-display text-lg font-bold">{item.displayNumber}</td>
                 <td className="px-6 py-4">{item.customerName}</td>
                 <td className="px-6 py-4"><StatusBadge status={item.status} /></td>
-                <td className="px-6 py-4 text-ink/60">{item.claimedBy ?? "—"}</td>
+                <td className="px-6 py-4 text-ink/60">{item.claimedBy ? `${item.claimedBy}${item.counterLabel ? ` (${item.counterLabel})` : ""}` : "-"}</td>
                 <td className="px-6 py-4 text-ink/60">{new Date(item.joinedAt).toLocaleString()}</td>
               </tr>
             ))}

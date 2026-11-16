@@ -51,7 +51,10 @@ export function QueueBoard({ snapshot, connectionState }: QueueBoardProps) {
               <p className="rounded-2xl border border-dashed border-ink/15 p-5 text-sm text-ink/45">No token is being served yet.</p>
             ) : active.map((token) => (
               <div key={token.id} className="rounded-2xl bg-violet/5 p-5 text-ink ring-1 ring-violet/10">
-                <p className="font-display text-3xl font-bold">{token.displayNumber}</p>
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="font-display text-3xl font-bold">{token.displayNumber}</p>
+                  {token.counterLabel ? <p className="font-display text-lg font-bold text-violet">→ {token.counterLabel}</p> : null}
+                </div>
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <StatusBadge status={token.status} />
                   <span className="text-xs text-ink/55">{token.claimedBy}</span>

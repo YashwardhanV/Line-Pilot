@@ -34,7 +34,7 @@ class QueueApiIntegrationTest extends PostgresIntegrationTest {
     @BeforeEach
     void setUpApiData() {
         userRepository.save(new UserAccount(
-                "staff", passwordEncoder.encode("password"), "Staff"));
+                "staff", passwordEncoder.encode("password"), "Staff", "Counter 3"));
         queue = queueRepository.save(new ServiceQueue("API", "API Queue", "Desk", "A", 5));
     }
 
@@ -74,7 +74,11 @@ class QueueApiIntegrationTest extends PostgresIntegrationTest {
                         .with(httpBasic("staff", "password")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CALLED"))
-                .andExpect(jsonPath("$.claimedBy").value("Staff"));
+                .andExpect(jsonPath("$.claimedBy").value("Staff"))
+                .andExpect(jsonPath("$.counterLabel").value("Counter 3"));
+
+        mockMvc.perform(get("/api/queues/{queueId}", queue.getId()))
+                .andExpect(jsonPath("$.tokens[0].counterLabel").value("Counter 3"));
     }
 
     @Test

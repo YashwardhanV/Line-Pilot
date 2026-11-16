@@ -22,6 +22,7 @@ export interface QueueTokenView {
   displayNumber: string;
   status: TokenStatus;
   claimedBy: string | null;
+  counterLabel: string | null;
   joinedAt: string;
   updatedAt: string;
 }
@@ -50,6 +51,7 @@ export interface TokenResponse {
   peopleAhead: number;
   estimatedWaitMinutes: number;
   claimedBy: string | null;
+  counterLabel: string | null;
   joinedAt: string;
   updatedAt: string;
 }
@@ -57,6 +59,7 @@ export interface TokenResponse {
 export interface AuthUser {
   username: string;
   displayName: string;
+  counterLabel: string | null;
 }
 
 export interface HistoryItem {
@@ -65,6 +68,7 @@ export interface HistoryItem {
   customerName: string;
   status: TokenStatus;
   claimedBy: string | null;
+  counterLabel: string | null;
   joinedAt: string;
   calledAt: string | null;
   servingAt: string | null;

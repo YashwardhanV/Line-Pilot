@@ -54,6 +54,9 @@ public class QueueToken {
     @JoinColumn(name = "claimed_by_id")
     private UserAccount claimedBy;
 
+    @Column(name = "counter_label", length = 40)
+    private String counterLabel;
+
     @Column(name = "joined_at", nullable = false, updatable = false)
     private Instant joinedAt;
 
@@ -93,6 +96,7 @@ public class QueueToken {
         requireStatus(TokenStatus.WAITING);
         status = TokenStatus.CALLED;
         claimedBy = staff;
+        counterLabel = staff.getCounterLabel();
         calledAt = clock.instant();
         updatedAt = calledAt;
     }
@@ -152,6 +156,7 @@ public class QueueToken {
     public String getCustomerName() { return customerName; }
     public TokenStatus getStatus() { return status; }
     public UserAccount getClaimedBy() { return claimedBy; }
+    public String getCounterLabel() { return counterLabel; }
     public Instant getJoinedAt() { return joinedAt; }
     public Instant getCalledAt() { return calledAt; }
     public Instant getServingAt() { return servingAt; }

@@ -9,6 +9,7 @@ public record QueueTokenView(
         String displayNumber,
         TokenStatus status,
         String claimedBy,
+        String counterLabel,
         Instant joinedAt,
         Instant updatedAt
 ) {

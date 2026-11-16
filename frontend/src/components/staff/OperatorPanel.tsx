@@ -5,12 +5,13 @@ import type { QueueTokenView } from "../../types";
 interface OperatorPanelProps {
   assignedToken: QueueTokenView | null;
   staffName: string;
+  counterLabel: string | null;
   queueId: number | null;
   busy: boolean;
   onAction: (path: string) => void;
 }
 
-export function OperatorPanel({ assignedToken, staffName, queueId, busy, onAction }: OperatorPanelProps) {
+export function OperatorPanel({ assignedToken, staffName, counterLabel, queueId, busy, onAction }: OperatorPanelProps) {
   return (
     <section className="rounded-[2rem] bg-ink p-6 text-white shadow-card lg:p-8" aria-labelledby="operator-controls-title">
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-aqua">Operator controls</p>
@@ -21,7 +22,7 @@ export function OperatorPanel({ assignedToken, staffName, queueId, busy, onActio
             <p className="font-display text-4xl font-bold">{assignedToken.displayNumber}</p>
             <StatusBadge status={assignedToken.status} />
           </div>
-          <p className="mt-3 text-sm text-ink/50">Assigned to {staffName}.</p>
+          <p className="mt-3 text-sm text-ink/50">Assigned to {staffName}{counterLabel ? ` at ${counterLabel}` : ""}.</p>
         </div>
       ) : (
         <div className="mt-6 rounded-3xl border border-dashed border-white/20 p-6 text-sm text-white/50">No active token assigned to you.</div>

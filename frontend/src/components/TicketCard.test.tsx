@@ -15,6 +15,7 @@ function token(status: TokenResponse["status"]): TokenResponse {
     peopleAhead: 2,
     estimatedWaitMinutes: 12,
     claimedBy: null,
+    counterLabel: status === "CALLED" ? "Counter 2" : null,
     joinedAt: "2026-08-07T08:00:00Z",
     updatedAt: "2026-08-07T08:00:00Z",
   };
@@ -31,9 +32,10 @@ describe("TicketCard", () => {
     expect(onCancel).toHaveBeenCalledOnce();
   });
 
-  it("hides the cancel button once the token has been called", () => {
+  it("tells a called customer which counter to go to and hides the cancel button", () => {
     render(<TicketCard token={token("CALLED")} onCancel={() => undefined} cancelling={false} />);
 
+    expect(screen.getByRole("status")).toHaveTextContent("Please go to Counter 2 now.");
     expect(screen.queryByRole("button", { name: "Leave this queue" })).not.toBeInTheDocument();
   });
 });

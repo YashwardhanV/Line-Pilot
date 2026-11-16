@@ -30,6 +30,7 @@ export function withLivePosition(token: TokenResponse, snapshot: QueueSnapshot):
     ...token,
     status: entry.status,
     claimedBy: entry.claimedBy,
+    counterLabel: entry.counterLabel,
     updatedAt: entry.updatedAt,
     peopleAhead,
     estimatedWaitMinutes: estimateMinutes(peopleAhead, snapshot.averageServiceMinutes, snapshot.activeStaff),

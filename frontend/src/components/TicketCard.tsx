@@ -23,6 +23,14 @@ export function TicketCard({ token, onCancel, cancelling }: TicketCardProps) {
           </span>
         </div>
         <div className="mt-5"><StatusBadge status={token.status} /></div>
+        {token.status === "CALLED" ? (
+          <p className="mt-5 rounded-2xl bg-white px-4 py-3 font-display text-xl font-bold text-ink" role="status">
+            It's your turn. Please go to {token.counterLabel ?? "the desk"} now.
+          </p>
+        ) : null}
+        {token.status === "SERVING" && token.counterLabel ? (
+          <p className="mt-5 text-sm font-semibold text-white/80">Being served at {token.counterLabel}.</p>
+        ) : null}
         <dl className="mt-7 grid gap-4 border-t border-white/20 pt-6 sm:grid-cols-2">
           <div>
             <dt className="flex items-center gap-2 text-sm text-white/60"><MapPin size={15} /> Queue</dt>

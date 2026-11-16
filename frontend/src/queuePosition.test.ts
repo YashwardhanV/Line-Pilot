@@ -3,7 +3,7 @@ import { estimateMinutes, withLivePosition } from "./queuePosition";
 import type { QueueSnapshot, QueueTokenView, TokenResponse, TokenStatus } from "./types";
 
 function entry(id: number, status: TokenStatus): QueueTokenView {
-  return { id, displayNumber: `A-00${id}`, status, claimedBy: status === "WAITING" ? null : "Anika", joinedAt: "", updatedAt: "" };
+  return { id, displayNumber: `A-00${id}`, status, claimedBy: status === "WAITING" ? null : "Anika", counterLabel: null, joinedAt: "", updatedAt: "" };
 }
 
 function snapshot(tokens: QueueTokenView[], activeStaff = 1): QueueSnapshot {
