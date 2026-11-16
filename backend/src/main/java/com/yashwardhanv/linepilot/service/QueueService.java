@@ -24,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -71,7 +70,7 @@ public class QueueService {
             throw new ConflictException("This queue is currently closed");
         }
 
-        LocalDate today = LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(clock);
         int sequence = queue.nextSequence(today);
         String displayNumber = queue.getTokenPrefix().toUpperCase(Locale.ROOT)
                 + "-" + String.format(Locale.ROOT, "%03d", sequence);

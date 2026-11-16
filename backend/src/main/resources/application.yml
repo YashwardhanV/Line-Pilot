@@ -32,6 +32,7 @@ springdoc:
     path: /swagger-ui.html
 
 app:
+  time-zone: ${APP_TIME_ZONE:Asia/Kolkata}
   cors-allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
   demo-data: ${APP_DEMO_DATA:true}
   sse-timeout: ${SSE_TIMEOUT_MS:300000}

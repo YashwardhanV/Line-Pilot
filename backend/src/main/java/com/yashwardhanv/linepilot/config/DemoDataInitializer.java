@@ -12,6 +12,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.LocalDate;
+
 @Component
 @ConditionalOnProperty(name = "app.demo-data", havingValue = "true")
 public class DemoDataInitializer implements ApplicationRunner {
@@ -21,17 +24,20 @@ public class DemoDataInitializer implements ApplicationRunner {
     private final QueueTokenRepository tokenRepository;
     private final QueueService queueService;
     private final PasswordEncoder passwordEncoder;
+    private final Clock clock;
 
     public DemoDataInitializer(UserAccountRepository userRepository,
                                ServiceQueueRepository queueRepository,
                                QueueTokenRepository tokenRepository,
                                QueueService queueService,
-                               PasswordEncoder passwordEncoder) {
+                               PasswordEncoder passwordEncoder,
+                               Clock clock) {
         this.userRepository = userRepository;
         this.queueRepository = queueRepository;
         this.tokenRepository = tokenRepository;
         this.queueService = queueService;
         this.passwordEncoder = passwordEncoder;
+        this.clock = clock;
     }
 
     @Override
@@ -49,7 +55,7 @@ public class DemoDataInitializer implements ApplicationRunner {
                         "D", 4)));
 
         if (tokenRepository.countByServiceQueueIdAndServiceDate(
-                queue.getId(), java.time.LocalDate.now(java.time.ZoneOffset.UTC)) == 0) {
+                queue.getId(), LocalDate.now(clock)) == 0) {
             queueService.joinQueue(queue.getId(), "Demo Customer 1");
             queueService.joinQueue(queue.getId(), "Demo Customer 2");
             queueService.joinQueue(queue.getId(), "Demo Customer 3");
