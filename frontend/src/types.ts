@@ -4,7 +4,8 @@ export type TokenStatus =
   | "SERVING"
   | "COMPLETED"
   | "SKIPPED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "EXPIRED";
 
 export interface QueueSummary {
   id: number;

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -36,6 +37,17 @@ public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
              LIMIT 1
             """, nativeQuery = true)
     Optional<QueueToken> lockNextWaitingToken(@Param("queueId") Long queueId);
+
+    // Tokens from an earlier day that were never served. version is bumped so a staff member or
+    // customer acting on a stale copy of the row gets a 409 instead of overwriting the expiry.
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE queue_tokens
+               SET status = 'EXPIRED', completed_at = :now, updated_at = :now, version = version + 1
+             WHERE service_date < :today
+               AND status IN ('WAITING', 'CALLED')
+            """, nativeQuery = true)
+    int expireUnservedBefore(@Param("today") LocalDate today, @Param("now") Instant now);
 
     // Waiting tokens that joined before the given token (ties broken by id).
     @Query(value = """

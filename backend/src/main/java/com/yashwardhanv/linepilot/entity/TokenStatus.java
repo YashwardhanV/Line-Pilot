@@ -6,5 +6,6 @@ public enum TokenStatus {
     SERVING,
     COMPLETED,
     SKIPPED,
-    CANCELLED
+    CANCELLED,
+    EXPIRED // left over from an earlier day
 }

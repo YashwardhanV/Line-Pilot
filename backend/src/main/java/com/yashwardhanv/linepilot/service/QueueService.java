@@ -132,6 +132,22 @@ public class QueueService {
         return toTokenResponse(tokenRepository.save(token));
     }
 
+    // ---------------------------------------------------------------- housekeeping
+
+    /**
+     * Marks WAITING and CALLED tokens from earlier days as EXPIRED, so yesterday's leftovers do not
+     * sit at the front of today's line. SERVING tokens are left for staff to complete.
+     */
+    @Transactional
+    public int expireTokensFromEarlierDays() {
+        return tokenRepository.expireUnservedBefore(LocalDate.now(clock), clock.instant());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> queueIds() {
+        return queueRepository.findAll().stream().map(ServiceQueue::getId).toList();
+    }
+
     // ---------------------------------------------------------------- reads
 
     @Transactional(readOnly = true)

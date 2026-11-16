@@ -7,6 +7,7 @@ const statusStyles: Record<TokenStatus, string> = {
   COMPLETED: "bg-slate-200 text-slate-700",
   SKIPPED: "bg-rose-100 text-rose-900",
   CANCELLED: "bg-stone-200 text-stone-700",
+  EXPIRED: "bg-stone-200 text-stone-500",
 };
 
 export function StatusBadge({ status }: { status: TokenStatus }) {
