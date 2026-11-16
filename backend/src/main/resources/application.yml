@@ -18,6 +18,8 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  # Behind Nginx, take the client IP from X-Forwarded-For (trusted only from internal proxy IPs).
+  forward-headers-strategy: native
   error:
     include-message: never
 
@@ -36,3 +38,6 @@ app:
   cors-allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
   demo-data: ${APP_DEMO_DATA:true}
   sse-timeout: ${SSE_TIMEOUT_MS:300000}
+  rate-limit:
+    joins-per-ip: ${JOINS_PER_IP_PER_10_MIN:5}
+    failed-logins-per-ip: ${FAILED_LOGINS_PER_IP:5}

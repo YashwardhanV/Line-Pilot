@@ -27,6 +27,11 @@ public class ApiExceptionHandler {
         return problem(HttpStatus.CONFLICT, "State conflict", exception.getMessage());
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    ResponseEntity<ProblemDetail> handleTooManyRequests(TooManyRequestsException exception) {
+        return problem(HttpStatus.TOO_MANY_REQUESTS, "Too many requests", exception.getMessage());
+    }
+
     // Two requests changed the same token at the same time (for example a customer cancels
     // while staff calls it). The @Version check on QueueToken detects this; the loser gets 409.
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)

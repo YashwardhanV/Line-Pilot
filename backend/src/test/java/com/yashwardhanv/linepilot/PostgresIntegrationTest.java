@@ -9,6 +9,9 @@ import org.springframework.test.context.DynamicPropertySource;
 import com.yashwardhanv.linepilot.repository.QueueTokenRepository;
 import com.yashwardhanv.linepilot.repository.ServiceQueueRepository;
 import com.yashwardhanv.linepilot.repository.UserAccountRepository;
+import com.yashwardhanv.linepilot.security.FixedWindowRateLimiter;
+
+import java.util.List;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 @SpringBootTest
@@ -40,8 +43,12 @@ abstract class PostgresIntegrationTest {
     @Autowired
     UserAccountRepository userRepository;
 
+    @Autowired
+    List<FixedWindowRateLimiter> rateLimiters;
+
     @BeforeEach
     void cleanDatabase() {
+        rateLimiters.forEach(FixedWindowRateLimiter::clear);
         tokenRepository.deleteAll();
         queueRepository.deleteAll();
         userRepository.deleteAll();

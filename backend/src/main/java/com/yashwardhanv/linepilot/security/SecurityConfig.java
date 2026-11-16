@@ -1,5 +1,6 @@
 package com.yashwardhanv.linepilot.security;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +11,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -20,7 +22,9 @@ import java.util.List;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            @Qualifier("failedLoginLimiter") FixedWindowRateLimiter failedLoginLimiter) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
@@ -32,6 +36,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/staff/**", "/api/auth/me").hasRole("STAFF")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
+                .addFilterBefore(new LoginThrottleFilter(failedLoginLimiter), BasicAuthenticationFilter.class)
                 .build();
     }
 

@@ -4,9 +4,13 @@ import com.yashwardhanv.linepilot.dto.JoinQueueRequest;
 import com.yashwardhanv.linepilot.dto.QueueSnapshotResponse;
 import com.yashwardhanv.linepilot.dto.QueueSummaryResponse;
 import com.yashwardhanv.linepilot.dto.TokenResponse;
+import com.yashwardhanv.linepilot.exception.TooManyRequestsException;
+import com.yashwardhanv.linepilot.security.FixedWindowRateLimiter;
 import com.yashwardhanv.linepilot.service.QueueEventStream;
 import com.yashwardhanv.linepilot.service.QueueService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -29,10 +33,13 @@ public class PublicQueueController {
 
     private final QueueService queueService;
     private final QueueEventStream eventStream;
+    private final FixedWindowRateLimiter joinRateLimiter;
 
-    public PublicQueueController(QueueService queueService, QueueEventStream eventStream) {
+    public PublicQueueController(QueueService queueService, QueueEventStream eventStream,
+                                 @Qualifier("joinRateLimiter") FixedWindowRateLimiter joinRateLimiter) {
         this.queueService = queueService;
         this.eventStream = eventStream;
+        this.joinRateLimiter = joinRateLimiter;
     }
 
     @GetMapping("/queues")
@@ -47,7 +54,11 @@ public class PublicQueueController {
 
     @PostMapping("/queues/{queueId}/tokens")
     public ResponseEntity<TokenResponse> join(@PathVariable Long queueId,
-                                              @Valid @RequestBody JoinQueueRequest request) {
+                                              @Valid @RequestBody JoinQueueRequest request,
+                                              HttpServletRequest httpRequest) {
+        if (!joinRateLimiter.tryAcquire(httpRequest.getRemoteAddr())) {
+            throw new TooManyRequestsException("Too many tokens requested from this device. Try again in a few minutes.");
+        }
         TokenResponse token = notifyBoards(queueService.joinQueue(queueId, request.customerName()));
         return ResponseEntity.created(URI.create("/api/tokens/" + token.publicId())).body(token);
     }
