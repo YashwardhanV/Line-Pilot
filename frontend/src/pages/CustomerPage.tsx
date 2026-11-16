@@ -4,6 +4,7 @@ import { ApiError, apiRequest } from "../api";
 import { QueueBoard } from "../components/QueueBoard";
 import { TicketCard } from "../components/TicketCard";
 import { useQueueEvents } from "../hooks/useQueueEvents";
+import { requestTurnAlertPermission, useTurnAlert } from "../hooks/useTurnAlert";
 import { isActive, withLivePosition } from "../queuePosition";
 import type { QueueSummary, TokenResponse } from "../types";
 
@@ -33,6 +34,7 @@ export function CustomerPage() {
   // One active token per browser. Otherwise the first token is forgotten here but still sits in
   // the line, and staff end up calling someone who is not coming.
   const hasActiveToken = Boolean(shownToken && isActive(shownToken.status));
+  useTurnAlert(shownToken);
   const trackedPublicId = token?.publicId;
   const snapshotGeneratedAt = snapshot?.generatedAt;
 
@@ -65,6 +67,7 @@ export function CustomerPage() {
   async function joinQueue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (selectedQueueId === null || hasActiveToken) return;
+    requestTurnAlertPermission();
     setSubmitting(true);
     setError(null);
     try {
