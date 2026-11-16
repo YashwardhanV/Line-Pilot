@@ -59,7 +59,7 @@ public class PublicQueueController {
         if (!joinRateLimiter.tryAcquire(httpRequest.getRemoteAddr())) {
             throw new TooManyRequestsException("Too many tokens requested from this device. Try again in a few minutes.");
         }
-        TokenResponse token = notifyBoards(queueService.joinQueue(queueId, request.customerName()));
+        TokenResponse token = notifyBoards(queueService.joinQueue(queueId, request.customerName(), request.customerPhone()));
         return ResponseEntity.created(URI.create("/api/tokens/" + token.publicId())).body(token);
     }
 

@@ -46,6 +46,9 @@ public class QueueToken {
     @Column(name = "customer_name", nullable = false, length = 100)
     private String customerName;
 
+    @Column(name = "customer_phone", length = 20)
+    private String customerPhone;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private TokenStatus status;
@@ -90,6 +93,12 @@ public class QueueToken {
         this.status = TokenStatus.WAITING;
         this.joinedAt = clock.instant();
         this.updatedAt = joinedAt;
+    }
+
+    public QueueToken(ServiceQueue queue, int sequenceNumber, LocalDate serviceDate,
+                      String displayNumber, String customerName, String customerPhone, Clock clock) {
+        this(queue, sequenceNumber, serviceDate, displayNumber, customerName, clock);
+        this.customerPhone = customerPhone;
     }
 
     public void call(UserAccount staff, Clock clock) {
@@ -154,6 +163,7 @@ public class QueueToken {
     public LocalDate getServiceDate() { return serviceDate; }
     public String getDisplayNumber() { return displayNumber; }
     public String getCustomerName() { return customerName; }
+    public String getCustomerPhone() { return customerPhone; }
     public TokenStatus getStatus() { return status; }
     public UserAccount getClaimedBy() { return claimedBy; }
     public String getCounterLabel() { return counterLabel; }

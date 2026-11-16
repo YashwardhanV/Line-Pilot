@@ -12,9 +12,11 @@ import com.yashwardhanv.linepilot.entity.TokenStatus;
 import com.yashwardhanv.linepilot.entity.UserAccount;
 import com.yashwardhanv.linepilot.exception.ConflictException;
 import com.yashwardhanv.linepilot.exception.ResourceNotFoundException;
+import com.yashwardhanv.linepilot.notify.TokenCalledEvent;
 import com.yashwardhanv.linepilot.repository.QueueTokenRepository;
 import com.yashwardhanv.linepilot.repository.ServiceQueueRepository;
 import com.yashwardhanv.linepilot.repository.UserAccountRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -49,23 +51,31 @@ public class QueueService {
     private final UserAccountRepository userRepository;
     private final WaitTimeEstimator waitTimeEstimator;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     public QueueService(ServiceQueueRepository queueRepository,
                         QueueTokenRepository tokenRepository,
                         UserAccountRepository userRepository,
                         WaitTimeEstimator waitTimeEstimator,
-                        Clock clock) {
+                        Clock clock,
+                        ApplicationEventPublisher events) {
         this.queueRepository = queueRepository;
         this.tokenRepository = tokenRepository;
         this.userRepository = userRepository;
         this.waitTimeEstimator = waitTimeEstimator;
         this.clock = clock;
+        this.events = events;
     }
 
     // ---------------------------------------------------------------- customer actions
 
     @Transactional
     public TokenResponse joinQueue(Long queueId, String customerName) {
+        return joinQueue(queueId, customerName, null);
+    }
+
+    @Transactional
+    public TokenResponse joinQueue(Long queueId, String customerName, String customerPhone) {
         // Lock the queue row so two customers joining at once cannot get the same number.
         ServiceQueue queue = queueRepository.findByIdForUpdate(queueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Queue " + queueId + " not found"));
@@ -78,7 +88,7 @@ public class QueueService {
         String displayNumber = queue.getTokenPrefix().toUpperCase(Locale.ROOT)
                 + "-" + String.format(Locale.ROOT, "%03d", sequence);
         QueueToken token = new QueueToken(
-                queue, sequence, today, displayNumber, customerName.strip(), clock);
+                queue, sequence, today, displayNumber, customerName.strip(), customerPhone, clock);
         tokenRepository.saveAndFlush(token);
         return toTokenResponse(token);
     }
@@ -108,6 +118,11 @@ public class QueueService {
                 .orElseThrow(() -> new ConflictException("No waiting tokens are available"));
         token.call(staff, clock);
         tokenRepository.saveAndFlush(token);
+        if (token.getCustomerPhone() != null) {
+            // Delivered by TokenCalledListener after this transaction commits.
+            events.publishEvent(new TokenCalledEvent(token.getCustomerPhone(), token.getDisplayNumber(),
+                    token.getServiceQueue().getName(), token.getCounterLabel()));
+        }
         return toTokenResponse(token);
     }
 
@@ -143,7 +158,9 @@ public class QueueService {
      */
     @Transactional
     public int expireTokensFromEarlierDays() {
-        return tokenRepository.expireUnservedBefore(LocalDate.now(clock), clock.instant());
+        LocalDate today = LocalDate.now(clock);
+        tokenRepository.clearPhonesBefore(today);
+        return tokenRepository.expireUnservedBefore(today, clock.instant());
     }
 
     @Transactional(readOnly = true)

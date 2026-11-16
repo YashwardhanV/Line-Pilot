@@ -27,6 +27,10 @@ services:
       APP_DEMO_DATA: ${APP_DEMO_DATA:-true}
       SSE_TIMEOUT_MS: ${SSE_TIMEOUT_MS:-300000}
       APP_TIME_ZONE: ${APP_TIME_ZONE:-Asia/Kolkata}
+      NOTIFY_PROVIDER: ${NOTIFY_PROVIDER:-log}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM: ${TWILIO_FROM:-}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:

@@ -38,6 +38,13 @@ app:
   cors-allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
   demo-data: ${APP_DEMO_DATA:true}
   sse-timeout: ${SSE_TIMEOUT_MS:300000}
+  notify:
+    # "log" writes messages to the log; "twilio" sends SMS, or WhatsApp if the sender starts with "whatsapp:".
+    provider: ${NOTIFY_PROVIDER:log}
+    twilio:
+      account-sid: ${TWILIO_ACCOUNT_SID:}
+      auth-token: ${TWILIO_AUTH_TOKEN:}
+      from: ${TWILIO_FROM:}
   rate-limit:
     joins-per-ip: ${JOINS_PER_IP_PER_10_MIN:5}
     failed-logins-per-ip: ${FAILED_LOGINS_PER_IP:5}

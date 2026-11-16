@@ -28,8 +28,12 @@ export async function apiRequest<T>(
 
   const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!response.ok) {
-    const problem = (await response.json().catch(() => null)) as { detail?: string } | null;
-    throw new ApiError(response.status, problem?.detail ?? `Request failed with status ${response.status}`);
+    const problem = (await response.json().catch(() => null)) as
+      | { detail?: string; errors?: Record<string, string> }
+      | null;
+    // For validation errors, the field message ("Phone must be in international format…") is more useful.
+    const fieldError = problem?.errors ? Object.values(problem.errors)[0] : undefined;
+    throw new ApiError(response.status, fieldError ?? problem?.detail ?? `Request failed with status ${response.status}`);
   }
   return (await response.json()) as T;
 }

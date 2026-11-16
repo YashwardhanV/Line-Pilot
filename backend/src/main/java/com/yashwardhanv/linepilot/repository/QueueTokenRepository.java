@@ -49,6 +49,14 @@ public interface QueueTokenRepository extends JpaRepository<QueueToken, Long> {
             """, nativeQuery = true)
     int expireUnservedBefore(@Param("today") LocalDate today, @Param("now") Instant now);
 
+    // Phone numbers are only needed on the day; drop them afterwards.
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE queue_tokens SET customer_phone = NULL
+             WHERE service_date < :today AND customer_phone IS NOT NULL
+            """, nativeQuery = true)
+    int clearPhonesBefore(@Param("today") LocalDate today);
+
     // Waiting tokens that joined before the given token (ties broken by id).
     @Query(value = """
             SELECT COUNT(*)

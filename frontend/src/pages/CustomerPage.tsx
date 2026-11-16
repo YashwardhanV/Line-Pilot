@@ -18,6 +18,7 @@ export function CustomerPage() {
   const [queues, setQueues] = useState<QueueSummary[]>([]);
   const [selectedQueueId, setSelectedQueueId] = useState<number | null>(null);
   const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [token, setToken] = useState<TokenResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,10 +70,11 @@ export function CustomerPage() {
     try {
       const joined = await apiRequest<TokenResponse>(`/queues/${selectedQueueId}/tokens`, {
         method: "POST",
-        body: JSON.stringify({ customerName }),
+        body: JSON.stringify({ customerName, customerPhone: customerPhone.trim() || null }),
       });
       setToken(joined);
       setCustomerName("");
+      setCustomerPhone("");
       localStorage.setItem(TRACKING_KEY, joined.publicId);
     } catch (requestError) {
       setError(messageFrom(requestError));
@@ -177,6 +179,20 @@ export function CustomerPage() {
                   {submitting ? "Joining…" : "Get my token"} <ArrowRight size={17} />
                 </button>
               </div>
+              <label htmlFor="customer-phone" className="mt-4 block text-sm font-semibold">
+                Phone for a "your turn" message <span className="font-normal text-ink/50">(optional)</span>
+              </label>
+              <input
+                id="customer-phone"
+                className="field mt-2 w-full"
+                type="tel"
+                value={customerPhone}
+                onChange={(event) => setCustomerPhone(event.target.value)}
+                placeholder="+919876543210"
+                autoComplete="tel"
+                disabled={hasActiveToken}
+              />
+              <p className="mt-2 text-xs text-ink/50">We text you when you are called, so you can put your phone away. The number is deleted at the end of the day.</p>
               {error ? <p className="mt-3 text-sm font-medium text-rose-700" role="alert">{error}</p> : null}
             </form>
           </div>
