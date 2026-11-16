@@ -29,6 +29,9 @@ export function CustomerPage() {
   const shownToken = live ?? token;
   // Only when an active token drops off the board do we ask the server what happened to it.
   const leftBoard = Boolean(token && isActive(token.status) && snapshot?.queueId === token.queueId && !live);
+  // One active token per browser. Otherwise the first token is forgotten here but still sits in
+  // the line, and staff end up calling someone who is not coming.
+  const hasActiveToken = Boolean(shownToken && isActive(shownToken.status));
   const trackedPublicId = token?.publicId;
   const snapshotGeneratedAt = snapshot?.generatedAt;
 
@@ -60,7 +63,7 @@ export function CustomerPage() {
 
   async function joinQueue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (selectedQueueId === null) return;
+    if (selectedQueueId === null || hasActiveToken) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -152,6 +155,11 @@ export function CustomerPage() {
             </div>
 
             <form onSubmit={joinQueue} className="mt-6 border-t border-ink/10 pt-6">
+              {hasActiveToken && shownToken ? (
+                <p className="mb-4 rounded-2xl bg-amber-100 px-4 py-3 text-sm font-medium text-amber-900">
+                  You already have token {shownToken.displayNumber} in {shownToken.queueName}. Leave that queue first to take a new token.
+                </p>
+              ) : null}
               <label htmlFor="customer-name" className="text-sm font-semibold">Your name</label>
               <div className="mt-2 flex flex-col gap-3 sm:flex-row">
                 <input
@@ -162,9 +170,10 @@ export function CustomerPage() {
                   maxLength={100}
                   placeholder="e.g. Asha"
                   autoComplete="name"
+                  disabled={hasActiveToken}
                   required
                 />
-                <button type="submit" className="button-primary" disabled={submitting || selectedQueueId === null}>
+                <button type="submit" className="button-primary" disabled={submitting || hasActiveToken || selectedQueueId === null}>
                   {submitting ? "Joining…" : "Get my token"} <ArrowRight size={17} />
                 </button>
               </div>
