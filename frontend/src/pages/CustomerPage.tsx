@@ -4,6 +4,7 @@ import { ApiError, apiRequest } from "../api";
 import { QueueBoard } from "../components/QueueBoard";
 import { TicketCard } from "../components/TicketCard";
 import { useQueueEvents } from "../hooks/useQueueEvents";
+import { isActive, withLivePosition } from "../queuePosition";
 import type { QueueSummary, TokenResponse } from "../types";
 
 const TRACKING_KEY = "linepilot:token-public-id:v1";
@@ -21,10 +22,15 @@ export function CustomerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { snapshot, connectionState } = useQueueEvents(selectedQueueId);
-  const snapshotGeneratedAt = snapshot?.generatedAt;
-  const snapshotQueueId = snapshot?.queueId;
+  // While the token is active, its position comes straight from the live board.
+  const live = token && isActive(token.status) && snapshot?.queueId === token.queueId
+    ? withLivePosition(token, snapshot)
+    : null;
+  const shownToken = live ?? token;
+  // Only when an active token drops off the board do we ask the server what happened to it.
+  const leftBoard = Boolean(token && isActive(token.status) && snapshot?.queueId === token.queueId && !live);
   const trackedPublicId = token?.publicId;
-  const trackedQueueId = token?.queueId;
+  const snapshotGeneratedAt = snapshot?.generatedAt;
 
   useEffect(() => {
     apiRequest<QueueSummary[]>("/queues")
@@ -37,17 +43,20 @@ export function CustomerPage() {
     const publicId = localStorage.getItem(TRACKING_KEY);
     if (publicId) {
       apiRequest<TokenResponse>(`/tokens/${publicId}`)
-        .then((storedToken) => setToken(storedToken))
+        .then((storedToken) => {
+          setToken(storedToken);
+          setSelectedQueueId(storedToken.queueId);
+        })
         .catch(() => localStorage.removeItem(TRACKING_KEY));
     }
   }, []);
 
   useEffect(() => {
-    if (!trackedPublicId || !snapshotGeneratedAt || trackedQueueId !== snapshotQueueId) return;
+    if (!leftBoard || !trackedPublicId) return;
     apiRequest<TokenResponse>(`/tokens/${trackedPublicId}`)
       .then(setToken)
       .catch(() => undefined);
-  }, [snapshotGeneratedAt, snapshotQueueId, trackedPublicId, trackedQueueId]);
+  }, [leftBoard, trackedPublicId, snapshotGeneratedAt]);
 
   async function joinQueue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -166,7 +175,7 @@ export function CustomerPage() {
       </section>
 
       <section className="mt-8 grid items-start gap-6 lg:grid-cols-[0.68fr_1.32fr]">
-        {token ? <TicketCard token={token} onCancel={cancelToken} cancelling={submitting} /> : (
+        {shownToken ? <TicketCard token={shownToken} onCancel={cancelToken} cancelling={submitting} /> : (
           <div className="rounded-[2rem] border border-ink/10 bg-white/80 p-7 shadow-card">
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-violet/10 text-violet"><ShieldCheck size={23} /></span>
             <h2 className="mt-5 font-display text-2xl font-bold">Your token appears here</h2>

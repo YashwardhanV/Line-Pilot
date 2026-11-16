@@ -173,6 +173,10 @@ public class QueueService {
                 queue.isOpen(),
                 waiting,
                 estimate(queue, waiting),
+                // Sent so browsers can work out their own position from the board without
+                // calling back to the server on every update.
+                averageServiceMinutes(queue),
+                activeStaff(queueId),
                 clock.instant(),
                 tokens.stream().map(this::toQueueTokenView).toList()
         );

@@ -10,6 +10,8 @@ public record QueueSnapshotResponse(
         boolean open,
         long waitingCount,
         long estimatedWaitMinutes,
+        long averageServiceMinutes,
+        long activeStaff,
         Instant generatedAt,
         List<QueueTokenView> tokens
 ) {

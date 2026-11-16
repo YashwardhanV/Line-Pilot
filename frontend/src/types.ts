@@ -33,6 +33,8 @@ export interface QueueSnapshot {
   open: boolean;
   waitingCount: number;
   estimatedWaitMinutes: number;
+  averageServiceMinutes: number;
+  activeStaff: number;
   generatedAt: string;
   tokens: QueueTokenView[];
 }
