@@ -15,6 +15,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -74,6 +75,9 @@ public class QueueToken {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "rejoined_as_id")
+    private Long rejoinedAsId;
 
     @Version
     @Column(nullable = false)
@@ -141,6 +145,23 @@ public class QueueToken {
         updatedAt = completedAt;
     }
 
+    /** A no-show can rejoin once, and only shortly after being skipped. */
+    public void requireRejoinable(Clock clock, Duration window) {
+        requireStatus(TokenStatus.SKIPPED);
+        if (rejoinedAsId != null) {
+            throw new ConflictException("This token has already been put back in the line");
+        }
+        if (completedAt.plus(window).isBefore(clock.instant())) {
+            throw new ConflictException("It has been more than " + window.toMinutes()
+                    + " minutes since this token was called. Please take a new token.");
+        }
+    }
+
+    public void markRejoined(QueueToken replacement, Clock clock) {
+        rejoinedAsId = replacement.getId();
+        updatedAt = clock.instant();
+    }
+
     private void requireClaim(UserAccount staff) {
         boolean samePersistedUser = claimedBy != null
                 && claimedBy.getId() != null
@@ -172,4 +193,5 @@ public class QueueToken {
     public Instant getServingAt() { return servingAt; }
     public Instant getCompletedAt() { return completedAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public Long getRejoinedAsId() { return rejoinedAsId; }
 }

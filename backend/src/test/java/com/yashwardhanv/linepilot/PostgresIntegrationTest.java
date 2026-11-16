@@ -49,7 +49,7 @@ abstract class PostgresIntegrationTest {
     @BeforeEach
     void cleanDatabase() {
         rateLimiters.forEach(FixedWindowRateLimiter::clear);
-        tokenRepository.deleteAll();
+        tokenRepository.deleteAllInBatch(); // one DELETE, so rejoined_as_id links are not checked row by row
         queueRepository.deleteAll();
         userRepository.deleteAll();
     }

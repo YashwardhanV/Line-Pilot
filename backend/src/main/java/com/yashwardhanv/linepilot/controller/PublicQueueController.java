@@ -56,10 +56,15 @@ public class PublicQueueController {
     public ResponseEntity<TokenResponse> join(@PathVariable Long queueId,
                                               @Valid @RequestBody JoinQueueRequest request,
                                               HttpServletRequest httpRequest) {
-        if (!joinRateLimiter.tryAcquire(httpRequest.getRemoteAddr())) {
-            throw new TooManyRequestsException("Too many tokens requested from this device. Try again in a few minutes.");
-        }
+        limitJoins(httpRequest);
         TokenResponse token = notifyBoards(queueService.joinQueue(queueId, request.customerName(), request.customerPhone()));
+        return ResponseEntity.created(URI.create("/api/tokens/" + token.publicId())).body(token);
+    }
+
+    @PostMapping("/tokens/{publicId}/rejoin")
+    public ResponseEntity<TokenResponse> rejoin(@PathVariable UUID publicId, HttpServletRequest httpRequest) {
+        limitJoins(httpRequest);
+        TokenResponse token = notifyBoards(queueService.rejoin(publicId));
         return ResponseEntity.created(URI.create("/api/tokens/" + token.publicId())).body(token);
     }
 
@@ -79,6 +84,12 @@ public class PublicQueueController {
         return ResponseEntity.status(HttpStatus.OK)
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-transform")
                 .body(emitter);
+    }
+
+    private void limitJoins(HttpServletRequest httpRequest) {
+        if (!joinRateLimiter.tryAcquire(httpRequest.getRemoteAddr())) {
+            throw new TooManyRequestsException("Too many tokens requested from this device. Try again in a few minutes.");
+        }
     }
 
     // The service call above has already committed, so live boards never see a change that rolls back.

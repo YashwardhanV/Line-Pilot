@@ -5,10 +5,11 @@ import { StatusBadge } from "./StatusBadge";
 interface TicketCardProps {
   token: TokenResponse;
   onCancel: () => void;
+  onRejoin: () => void;
   cancelling: boolean;
 }
 
-export function TicketCard({ token, onCancel, cancelling }: TicketCardProps) {
+export function TicketCard({ token, onCancel, onRejoin, cancelling }: TicketCardProps) {
   return (
     <section className="relative overflow-hidden rounded-[2rem] bg-violet p-6 text-white shadow-card lg:p-8" aria-labelledby="your-token-title">
       <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-aqua/30 blur-2xl" />
@@ -41,6 +42,14 @@ export function TicketCard({ token, onCancel, cancelling }: TicketCardProps) {
             <dd className="mt-1 font-semibold">{token.estimatedWaitMinutes} minutes · {token.peopleAhead} ahead</dd>
           </div>
         </dl>
+        {token.status === "SKIPPED" ? (
+          <div className="mt-7 rounded-2xl bg-white/10 p-4">
+            <p className="text-sm text-white/80">You missed your turn. If you are here now, you can go back in the line with a new number.</p>
+            <button type="button" onClick={onRejoin} disabled={cancelling} className="button-secondary mt-3 py-2 text-ink">
+              {cancelling ? "Rejoining…" : "Put me back in the line"}
+            </button>
+          </div>
+        ) : null}
         {token.status === "WAITING" ? (
           <button
             type="button"

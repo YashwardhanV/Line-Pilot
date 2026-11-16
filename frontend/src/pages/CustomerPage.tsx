@@ -101,6 +101,21 @@ export function CustomerPage() {
     }
   }
 
+  async function rejoin() {
+    if (!token) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const fresh = await apiRequest<TokenResponse>(`/tokens/${token.publicId}/rejoin`, { method: "POST" });
+      setToken(fresh);
+      localStorage.setItem(TRACKING_KEY, fresh.publicId);
+    } catch (requestError) {
+      setError(messageFrom(requestError));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8 lg:py-12">
       <section className="relative overflow-hidden rounded-[2.5rem] bg-ink px-6 py-8 text-white shadow-card sm:px-10 sm:py-12 lg:px-14 lg:py-14">
@@ -203,7 +218,7 @@ export function CustomerPage() {
       </section>
 
       <section className="mt-8 grid items-start gap-6 lg:grid-cols-[0.68fr_1.32fr]">
-        {shownToken ? <TicketCard token={shownToken} onCancel={cancelToken} cancelling={submitting} /> : (
+        {shownToken ? <TicketCard token={shownToken} onCancel={cancelToken} onRejoin={() => void rejoin()} cancelling={submitting} /> : (
           <div className="rounded-[2rem] border border-ink/10 bg-white/80 p-7 shadow-card">
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-violet/10 text-violet"><ShieldCheck size={23} /></span>
             <h2 className="mt-5 font-display text-2xl font-bold">Your token appears here</h2>

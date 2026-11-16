@@ -24,7 +24,7 @@ function token(status: TokenResponse["status"]): TokenResponse {
 describe("TicketCard", () => {
   it("lets a waiting customer leave the queue", () => {
     const onCancel = vi.fn();
-    render(<TicketCard token={token("WAITING")} onCancel={onCancel} cancelling={false} />);
+    render(<TicketCard token={token("WAITING")} onCancel={onCancel} onRejoin={() => undefined} cancelling={false} />);
 
     expect(screen.getByText("A-007")).toBeInTheDocument();
     expect(screen.getByText("12 minutes · 2 ahead")).toBeInTheDocument();
@@ -33,9 +33,17 @@ describe("TicketCard", () => {
   });
 
   it("tells a called customer which counter to go to and hides the cancel button", () => {
-    render(<TicketCard token={token("CALLED")} onCancel={() => undefined} cancelling={false} />);
+    render(<TicketCard token={token("CALLED")} onCancel={() => undefined} onRejoin={() => undefined} cancelling={false} />);
 
     expect(screen.getByRole("status")).toHaveTextContent("Please go to Counter 2 now.");
     expect(screen.queryByRole("button", { name: "Leave this queue" })).not.toBeInTheDocument();
+  });
+
+  it("offers a no-show the chance to rejoin", () => {
+    const onRejoin = vi.fn();
+    render(<TicketCard token={token("SKIPPED")} onCancel={() => undefined} onRejoin={onRejoin} cancelling={false} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Put me back in the line" }));
+    expect(onRejoin).toHaveBeenCalledOnce();
   });
 });

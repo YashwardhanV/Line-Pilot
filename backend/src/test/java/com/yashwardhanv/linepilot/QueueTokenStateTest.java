@@ -8,6 +8,7 @@ import com.yashwardhanv.linepilot.exception.ConflictException;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -41,6 +42,22 @@ class QueueTokenStateTest {
 
         assertThatThrownBy(() -> token.cancel(clock))
                 .isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    void noShowCanOnlyRejoinWithinTheWindow() {
+        UserAccount staff = new UserAccount("staff", "hash", "Staff");
+        QueueToken token = token();
+        token.call(staff, clock);
+        token.skip(staff, clock);
+
+        Clock twentyMinutesLater = Clock.offset(clock, Duration.ofMinutes(20));
+        Clock fortyMinutesLater = Clock.offset(clock, Duration.ofMinutes(40));
+
+        token.requireRejoinable(twentyMinutesLater, Duration.ofMinutes(30));
+        assertThatThrownBy(() -> token.requireRejoinable(fortyMinutesLater, Duration.ofMinutes(30)))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("more than 30 minutes");
     }
 
     private QueueToken token() {

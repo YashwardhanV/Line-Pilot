@@ -45,6 +45,8 @@ public class QueueService {
 
     // A staff member who finished a customer within this window still counts as working the queue.
     private static final Duration ACTIVE_STAFF_WINDOW = Duration.ofMinutes(30);
+    // How long after a no-show the customer can still ask to be put back in the line.
+    private static final Duration REJOIN_WINDOW = Duration.ofMinutes(30);
 
     private final ServiceQueueRepository queueRepository;
     private final QueueTokenRepository tokenRepository;
@@ -76,21 +78,23 @@ public class QueueService {
 
     @Transactional
     public TokenResponse joinQueue(Long queueId, String customerName, String customerPhone) {
-        // Lock the queue row so two customers joining at once cannot get the same number.
-        ServiceQueue queue = queueRepository.findByIdForUpdate(queueId)
-                .orElseThrow(() -> new ResourceNotFoundException("Queue " + queueId + " not found"));
-        if (!queue.isOpen()) {
-            throw new ConflictException("This queue is currently closed");
-        }
+        ServiceQueue queue = lockOpenQueue(queueId);
+        return toTokenResponse(issueToken(queue, customerName.strip(), customerPhone));
+    }
 
-        LocalDate today = LocalDate.now(clock);
-        int sequence = queue.nextSequence(today);
-        String displayNumber = queue.getTokenPrefix().toUpperCase(Locale.ROOT)
-                + "-" + String.format(Locale.ROOT, "%03d", sequence);
-        QueueToken token = new QueueToken(
-                queue, sequence, today, displayNumber, customerName.strip(), customerPhone, clock);
-        tokenRepository.saveAndFlush(token);
-        return toTokenResponse(token);
+    /** Puts a no-show back at the end of the line with a new number. */
+    @Transactional
+    public TokenResponse rejoin(UUID publicId) {
+        QueueToken skipped = tokenRepository.findByPublicId(publicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Queue token not found"));
+        ServiceQueue queue = lockOpenQueue(skipped.getServiceQueue().getId());
+        skipped.requireRejoinable(clock, REJOIN_WINDOW);
+
+        QueueToken fresh = issueToken(queue, skipped.getCustomerName(), skipped.getCustomerPhone());
+        skipped.markRejoined(fresh, clock);
+        // A second rejoin request racing this one fails the @Version check and gets 409.
+        tokenRepository.saveAndFlush(skipped);
+        return toTokenResponse(fresh);
     }
 
     @Transactional
@@ -225,6 +229,25 @@ public class QueueService {
     }
 
     // ---------------------------------------------------------------- helpers
+
+    // Locks the queue row so two customers joining at once cannot get the same number.
+    private ServiceQueue lockOpenQueue(Long queueId) {
+        ServiceQueue queue = queueRepository.findByIdForUpdate(queueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Queue " + queueId + " not found"));
+        if (!queue.isOpen()) {
+            throw new ConflictException("This queue is currently closed");
+        }
+        return queue;
+    }
+
+    private QueueToken issueToken(ServiceQueue queue, String customerName, String customerPhone) {
+        LocalDate today = LocalDate.now(clock);
+        int sequence = queue.nextSequence(today);
+        String displayNumber = queue.getTokenPrefix().toUpperCase(Locale.ROOT)
+                + "-" + String.format(Locale.ROOT, "%03d", sequence);
+        return tokenRepository.saveAndFlush(new QueueToken(
+                queue, sequence, today, displayNumber, customerName, customerPhone, clock));
+    }
 
     private ServiceQueue findQueue(Long queueId) {
         return queueRepository.findById(queueId)

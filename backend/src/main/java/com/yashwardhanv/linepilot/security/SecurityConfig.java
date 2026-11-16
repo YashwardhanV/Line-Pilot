@@ -32,7 +32,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/queues/**", "/api/tokens/*").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/queues/*/tokens", "/api/tokens/*/cancel").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/queues/*/tokens", "/api/tokens/*/cancel", "/api/tokens/*/rejoin").permitAll()
                         .requestMatchers("/api/staff/**", "/api/auth/me").hasRole("STAFF")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
