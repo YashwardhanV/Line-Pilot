@@ -40,13 +40,3 @@ cd frontend && npm ci && npm run lint && npm test && npm run build
 - **Messages go out only after the database commits**, on a background thread, so a slow SMS provider never slows staff down.
 
 More: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-
-## Known limitations
-
-- Not yet tried at a real desk with real customers.
-- One backend instance only: live-board subscribers and rate-limit counters are kept in memory.
-- Anyone with a token's tracking link can view or cancel it. Customers have no accounts.
-- Queues and staff come from seed data. There is no admin screen.
-- WhatsApp needs a Twilio-approved message template in production, and SMS in India needs DLT registration.
-- Staff sign in with HTTP Basic, which must run behind HTTPS outside localhost.
-- No browser end-to-end tests yet.
